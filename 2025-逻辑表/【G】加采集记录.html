@@ -1,0 +1,1200 @@
+<html lang="zh-CN"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>低保真交互原型</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#f3f4f6',
+                        active: '#dbeafe',
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .tree-indent {
+                padding-left: 1.5rem;
+            }
+            .tab-active {
+                @apply bg-active border-primary;
+            }
+            .item-active {
+                @apply bg-active;
+            }
+            .toggle-btn {
+                width: 1.25rem;
+                text-align: center;
+                cursor: pointer;
+            }
+            .list-header {
+                @apply bg-gray-100 font-semibold;
+            }
+            .list-row {
+                @apply border-b border-gray-200 hover:bg-gray-50;
+            }
+            .table-cell-hover {
+                @apply hover:underline cursor-pointer text-blue-600;
+            }
+            .breadcrumb-separator {
+                @apply mx-2 text-gray-500;
+            }
+            .breadcrumb-item {
+                @apply hover:text-blue-600 cursor-pointer;
+            }
+            .breadcrumb-item-current {
+                @apply text-gray-700 font-medium;
+            }
+            /* 新增半选状态样式 */
+            .indeterminate:checked {
+                background-color: transparent !important;
+                border-color: #3b82f6 !important;
+                position: relative;
+            }
+            .indeterminate:checked::before {
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 0.6rem;
+                height: 0.15rem;
+                background-color: #3b82f6;
+            }
+            /* 隐藏半选状态的勾 */
+            .indeterminate:checked::after {
+                content: none;
+            }
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden border border-gray-300">
+    <div class="w-1/4 border-r border-gray-300 overflow-y-auto p-4 bg-gray-50">
+        <div class="flex items-center justify-between mb-4 border-b border-gray-300 pb-2">
+            <h2 class="text-lg font-bold">逻辑数据</h2>
+            <div class="relative">
+                <button id="new-btn" class="text-primary hover:text-blue-700 px-2 py-1 rounded">新建</button>
+                <div id="new-menu" class="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-10 hidden">
+                    <a href="#" id="new-table-menu" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">新建逻辑表</a>
+                    <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">新建文件夹</a>
+                </div>
+            </div>
+        </div>
+        <div class="mb-2">
+            <div id="collection-management" class="flex items-center p-2 hover:bg-gray-100 cursor-pointer">
+                <i class="fa fa-cogs mr-2 text-gray-600"></i>
+                <span>采集计划管理</span>
+            </div>
+        </div>
+        
+        <div class="mb-2">
+            <div id="root-directory" class="flex items-center p-2 hover:bg-gray-100 cursor-pointer" data-id="root" data-type="directory">
+                <i class="fa fa-database mr-2 text-blue-600"></i>
+                <span>根目录</span>
+            </div>
+            
+            <div class="mb-1 tree-indent">
+                <div class="flex items-center p-2 hover:bg-gray-100 cursor-pointer" data-type="folder" data-id="folder1">
+                    <span class="toggle-btn mr-1">
+                        <i class="fa fa-chevron-down text-gray-500"></i>
+                    </span>
+                    <i class="fa fa-folder text-yellow-500 mr-2"></i>
+                    <span>文件夹1</span>
+                </div>
+                <div id="folder1-content" class="tree-indent">
+                    <div class="mb-1 tree-indent">
+                        <div class="flex items-center p-2 hover:bg-gray-100 cursor-pointer" data-type="folder" data-id="folder3">
+                            <span class="toggle-btn mr-1">
+                                <i class="fa fa-chevron-right text-gray-500"></i>
+                            </span>
+                            <i class="fa fa-folder text-yellow-500 mr-2"></i>
+                            <span>文件夹3</span>
+                        </div>
+                        <div id="folder3-content" class="tree-indent hidden">
+                            <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="table7" data-parent="folder3">
+                                <i class="fa fa-table text-green-600 mr-3"></i>
+                                <span>表7</span>
+                            </div>
+                            <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="table8" data-parent="folder3">
+                                <i class="fa fa-table text-green-600 mr-3"></i>
+                                <span>表8</span>
+                            </div>
+                            <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="table9" data-parent="folder3">
+                                <i class="fa fa-table text-green-600 mr-3"></i>
+                                <span>表9</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="table1" data-parent="folder1">
+                        <i class="fa fa-table text-green-600 mr-3"></i>
+                        <span>表1</span>
+                    </div>
+                    <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="table2" data-parent="folder1">
+                        <i class="fa fa-table text-green-600 mr-3"></i>
+                        <span>表2</span>
+                    </div>
+                    <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="table3" data-parent="folder1">
+                        <i class="fa fa-table text-green-600 mr-3"></i>
+                        <span>表3</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-1 tree-indent">
+                <div class="flex items-center p-2 hover:bg-gray-100 cursor-pointer" data-type="folder" data-id="folder2">
+                    <span class="toggle-btn mr-1">
+                        <i class="fa fa-chevron-right text-gray-500"></i>
+                    </span>
+                    <i class="fa fa-folder text-yellow-500 mr-2"></i>
+                    <span>文件夹2</span>
+                </div>
+                <div id="folder2-content" class="tree-indent hidden">
+                    <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="table4" data-parent="folder2">
+                        <i class="fa fa-table text-green-600 mr-3"></i>
+                        <span>表4</span>
+                    </div>
+                    <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="table5" data-parent="folder2">
+                        <i class="fa fa-table text-green-600 mr-3"></i>
+                        <span>表5</span>
+                    </div>
+                    <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="table6" data-parent="folder2">
+                        <i class="fa fa-table text-green-600 mr-3"></i>
+                        <span>表6</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="w-3/4 flex flex-col overflow-hidden">
+        <div class="flex border-b border-gray-300 bg-gray-50" id="tab-container">
+            <div class="tab-item tab-active px-4 py-2 border border-b-0 cursor-pointer" data-tab="table-management">表管理</div>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto p-4" id="content-container">
+            <div id="table-management-tab" class="tab-content">
+                <h2 class="text-lg font-bold mb-4">表管理</h2>
+                
+                <div id="breadcrumb" class="mb-4 text-sm">
+                    </div>
+                
+                <div id="directory-content" class="overflow-x-auto">
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="new-table-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-3/4 max-w-2xl max-h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                <h3 class="text-lg font-bold">新建逻辑表</h3>
+                <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto mt-4 pr-2">
+                <p class="text-sm text-gray-500 mb-4">逻辑表本身不包含数据，需根据物理表采集对应的技术元数据</p>
+                
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="font-semibold mb-2">生成逻辑表</h4>
+                        <div class="flex items-center space-x-4">
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="creation-method" value="select" class="form-radio text-primary" checked>
+                                <span class="ml-2">选表采集</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="creation-method" value="sql" class="form-radio text-primary">
+                                <span class="ml-2">SQL 采集</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-semibold mb-2">所属目录</h4>
+                        <select id="directory-select" class="block w-full border border-gray-300 rounded-md p-2">
+                            </select>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-semibold mb-2">逻辑表名称</h4>
+                        <p class="text-sm text-gray-500">根据所选物理表自动生成默认名称：数据连接名_物理表名</p>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-semibold mb-2">采集配置</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex items-center space-x-2">
+                                <h5 class="w-20 font-medium text-gray-600">数据连接:</h5>
+                                <select class="border border-gray-300 rounded-md p-1">
+                                    <option>MySQL</option>
+                                </select>
+                                <select class="border border-gray-300 rounded-md p-1">
+                                    <option>数据连接 A</option>
+                                </select>
+                                <button class="bg-gray-200 text-gray-800 px-3 py-1 rounded-md hover:bg-gray-300">测试连接</button>
+                            </div>
+                            
+                            <div>
+                                <h5 class="font-medium mb-2">选择物理表</h5>
+                                <div id="physical-table-list" class="border border-gray-300 rounded-md h-60 overflow-y-auto p-2">
+                                    </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end items-center pt-4 border-t border-gray-200 mt-4 space-x-2">
+                <button id="cancel-btn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">取消</button>
+                <button id="generate-btn" class="bg-primary text-white px-4 py-2 rounded-md hover:bg-blue-700">生成 0 张逻辑表</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 目录名称映射
+        const directoryNames = {
+            'root': '根目录',
+            'folder1': '文件夹1',
+            'folder2': '文件夹2',
+            'folder3': '文件夹3'
+        };
+
+        // 目录树数据结构，用于生成下拉框
+        const directoryTree = [
+            { id: 'root', name: '根目录', children: [
+                { id: 'folder1', name: '文件夹1', children: [
+                    { id: 'folder3', name: '文件夹3' }
+                ]},
+                { id: 'folder2', name: '文件夹2' }
+            ]}
+        ];
+        
+        // 模拟所有表的管理数据
+        const tableManagementData = {
+            root: [
+                { id: "table1", name: "表1", directory: "文件夹1", connection: "主数据库", updateTime: "2023-05-15 09:30" },
+                { id: "table2", name: "表2", directory: "文件夹1", connection: "主数据库", updateTime: "2023-05-14 14:20" },
+                { id: "table3", name: "表3", directory: "文件夹1", connection: "主数据库", updateTime: "2023-05-10 11:45" },
+                { id: "table7", name: "表7", directory: "文件夹1/文件夹3", connection: "主数据库", updateTime: "2023-05-17 08:25" },
+                { id: "table8", name: "表8", directory: "文件夹1/文件夹3", connection: "主数据库", updateTime: "2023-05-16 13:10" },
+                { id: "table9", name: "表9", directory: "文件夹1/文件夹3", connection: "主数据库", updateTime: "2023-05-15 16:40" },
+                { id: "table4", name: "表4", directory: "文件夹2", connection: "备用数据库", updateTime: "2023-05-16 16:10" },
+                { id: "table5", name: "表5", directory: "文件夹2", connection: "备用数据库", updateTime: "2023-05-13 10:05" },
+                { id: "table6", name: "表6", directory: "文件夹2", connection: "备用数据库", updateTime: "2023-05-09 15:50" }
+            ],
+            folder1: [
+                { id: "table1", name: "表1", directory: "文件夹1", connection: "主数据库", updateTime: "2023-05-15 09:30" },
+                { id: "table2", name: "表2", directory: "文件夹1", connection: "主数据库", updateTime: "2023-05-14 14:20" },
+                { id: "table3", name: "表3", directory: "文件夹1", connection: "主数据库", updateTime: "2023-05-10 11:45" },
+                { id: "table7", name: "表7", directory: "文件夹1/文件夹3", connection: "主数据库", updateTime: "2023-05-17 08:25" },
+                { id: "table8", name: "表8", directory: "文件夹1/文件夹3", connection: "主数据库", updateTime: "2023-05-16 13:10" },
+                { id: "table9", name: "表9", directory: "文件夹1/文件夹3", connection: "主数据库", updateTime: "2023-05-15 16:40" }
+            ],
+            folder2: [
+                { id: "table4", name: "表4", directory: "文件夹2", connection: "备用数据库", updateTime: "2023-05-16 16:10" },
+                { id: "table5", name: "表5", directory: "文件夹2", connection: "备用数据库", updateTime: "2023-05-13 10:05" },
+                { id: "table6", name: "表6", directory: "文件夹2", connection: "备用数据库", updateTime: "2023-05-09 15:50" }
+            ],
+            folder3: [
+                { id: "table7", name: "表7", directory: "文件夹1/文件夹3", connection: "主数据库", updateTime: "2023-05-17 08:25" },
+                { id: "table8", name: "表8", directory: "文件夹1/文件夹3", connection: "主数据库", updateTime: "2023-05-16 13:10" },
+                { id: "table9", name: "表9", directory: "文件夹1/文件夹3", connection: "主数据库", updateTime: "2023-05-15 16:40" }
+            ]
+        };
+        
+        // 修改：模拟表详情数据，更新为新的统一结构
+        const tableDetailData = {
+            table1: {
+                dataPreview: [
+                    { 'order_id': '50001', 'order_no': 'ORD2024040500001', 'user_id': '10001', 'total_amount': '258.90', 'pay_amount': '258.90', 'pay_type': '1', 'order_status': '3', 'pay_time': '2024-04-05 10:05:00', 'ship_time': '2024-04-05 16:30:00', 'finish_time': '2024-04-08 09:20:00', 'create_time': '2024-04-05 09:50:00' },
+                    { 'order_id': '50002', 'order_no': 'ORD2024040600002', 'user_id': '10002', 'total_amount': '899.00', 'pay_amount': '899.00', 'pay_type': '2', 'order_status': '2', 'pay_time': '2024-04-06 14:10:00', 'ship_time': '2024-04-07 10:00:00', 'finish_time': 'NULL', 'create_time': '2024-04-06 14:05:00' },
+                    { 'order_id': '50003', 'order_no': 'ORD2024040700003', 'user_id': '10001', 'total_amount': '59.90', 'pay_amount': '0.00', 'pay_type': 'NULL', 'order_status': '0', 'pay_time': 'NULL', 'ship_time': 'NULL', 'finish_time': 'NULL', 'create_time': '2024-04-07 08:30:00' }
+                ],
+                fieldInfo: [
+                    { '字段名': 'order_id', '数据类型': 'BIGINT', '长度': '20', '主键': '是', '非空': '是', '默认值': 'AUTO_INCREMENT', '字段说明': '订单唯一标识', '约束规则': '自增' },
+                    { '字段名': 'order_no', '数据类型': 'VARCHAR', '长度': '32', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '订单编号', '约束规则': '唯一，规则：ORD+日期+6位随机数' },
+                    { '字段名': 'user_id', '数据类型': 'BIGINT', '长度': '20', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '下单用户ID', '约束规则': '关联t_user表' },
+                    { '字段名': 'total_amount': 'DECIMAL', '长度': '10,2', '主键': '否', '非空': '是', '默认值': '0.00', '字段说明': '订单总金额', '约束规则': '大于0' },
+                    { '字段名': 'pay_amount': 'DECIMAL', '长度': '10,2', '主键': '否', '非空': '是', '默认值': '0.00', '字段说明': '实付金额', '约束规则': '大于等于0' },
+                    { '字段名': 'pay_type': 'TINYINT', '长度': '1', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '支付方式', '约束规则': '1-微信，2-支付宝，3-银行卡' },
+                    { '字段名': 'order_status': 'TINYINT', '长度': '1', '主键': '否', '非空': '是', '默认值': '0', '字段说明': '订单状态', '约束规则': '0-待支付，1-已支付，2-已发货，3-已完成，4-已取消' },
+                    { '字段名': 'pay_time': 'DATETIME', '长度': '-', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '支付时间', '约束规则': '' },
+                    { '字段名': 'ship_time': 'DATETIME', '长度': '-', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '发货时间', '约束规则': '' },
+                    { '字段名': 'finish_time': 'DATETIME', '长度': '-', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '完成时间', '约束规则': '' },
+                    { '字段名': 'create_time': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP', '字段说明': '创建时间', '约束规则': '' },
+                    { '字段名': 'update_time': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', '字段说明': '更新时间', '约束规则': '' }
+                ]
+            },
+            // 其他表也使用相同的结构，这里为了简洁只列出table1
+            table2: { dataPreview: [], fieldInfo: [] },
+            table3: { dataPreview: [], fieldInfo: [] },
+            table4: { dataPreview: [], fieldInfo: [] },
+            table5: { dataPreview: [], fieldInfo: [] },
+            table6: { dataPreview: [], fieldInfo: [] },
+            table7: { dataPreview: [], fieldInfo: [] },
+            table8: { dataPreview: [], fieldInfo: [] },
+            table9: { dataPreview: [], fieldInfo: [] },
+        };
+        
+        // 新增：模拟元数据采集记录数据
+        const metadataLogData = {
+            table1: [
+                { id: '101', time: '2023-05-18 10:00:00', result: '已变更' },
+                { id: '102', time: '2023-05-17 10:00:00', result: '无变更' },
+                { id: '103', time: '2023-05-16 10:00:00', result: '已变更' },
+            ]
+        };
+
+        // 修改2: 更新物理表数据结构
+        const physicalTableData = [
+            {
+                id: 'physical-folder-demo1',
+                name: 'demo1',
+                children: [
+                    { id: 'physical-table1', name: 'table1' },
+                    { id: 'physical-table2', name: 'table2' },
+                    { id: 'physical-table3', name: 'table3' },
+                ]
+            },
+            {
+                id: 'physical-folder-demo2',
+                name: 'demo2',
+                children: [
+                    { id: 'physical-table4', name: 'table4' },
+                    { id: 'physical-table5', name: 'table5' },
+                ]
+            },
+            {
+                id: 'physical-folder-demo3',
+                name: 'demo3',
+                children: [
+                    { id: 'physical-table6', name: 'table6' },
+                    { id: 'physical-table7', name: 'table7' },
+                ]
+            }
+        ];
+        
+        // 状态变量
+        let currentDirectoryId = 'root'; // 当前选中的文件夹/根目录ID
+        let lastDirectoryId = 'root'; // 上次离开表管理时选中的目录ID
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            selectItem('root', 'directory');
+            updateBreadcrumb('root'); // 初始化面包屑
+            updateTableManagementContent('root'); // 初始加载根目录的表格数据
+            
+            // 为文件夹切换图标添加点击事件
+            document.querySelectorAll('.toggle-btn').forEach(toggle => {
+                toggle.addEventListener('click', function(e) {
+                    e.stopPropagation(); // 阻止事件冒泡
+                    toggleFolder(this);
+                });
+            });
+            
+            // 为文件夹添加点击事件
+            document.querySelectorAll('[data-type="folder"]').forEach(folder => {
+                folder.addEventListener('click', function() {
+                    const folderId = this.getAttribute('data-id');
+                    const toggleBtn = this.querySelector('.toggle-btn i');
+                    
+                    // 如果文件夹是收起状态，则展开它
+                    if (toggleBtn.classList.contains('fa-chevron-right')) {
+                        toggleFolder(this.querySelector('.toggle-btn'));
+                    }
+                    
+                    // 选中文件夹
+                    selectItem(folderId, 'folder');
+                    switchToTableManagementTab();
+                });
+            });
+            
+            // 为根目录添加点击事件
+            document.getElementById('root-directory').addEventListener('click', function() {
+                selectItem('root', 'directory');
+                switchToTableManagementTab();
+            });
+            
+            // 为表添加点击事件
+            document.querySelectorAll('[data-type="table"]').forEach(table => {
+                table.addEventListener('click', function() {
+                    const tableId = this.getAttribute('data-id');
+                    const tableName = this.querySelector('span').textContent;
+                    // 记录当前目录ID，以便返回表管理时使用
+                    lastDirectoryId = currentDirectoryId;
+                    selectItem(tableId, 'table');
+                    openTableTab(tableId, tableName);
+                });
+            });
+            
+            // 为表管理标签添加点击事件
+            document.querySelector('[data-tab="table-management"]').addEventListener('click', function() {
+                switchToTableManagementTab();
+                // 切换回上次离开表管理时选中的目录
+                selectItem(lastDirectoryId, lastDirectoryId === 'root' ? 'directory' : 'folder');
+            });
+
+            // 新增交互逻辑
+            const newBtn = document.getElementById('new-btn');
+            const newMenu = document.getElementById('new-menu');
+            const newTableMenu = document.getElementById('new-table-menu');
+            const newTableModal = document.getElementById('new-table-modal');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const cancelBtn = document.getElementById('cancel-btn');
+            const generateBtn = document.getElementById('generate-btn');
+            const physicalTableList = document.getElementById('physical-table-list');
+            
+            // 点击“新建”按钮显示菜单
+            newBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                newMenu.classList.toggle('hidden');
+            });
+
+            // 点击页面其他地方关闭菜单
+            document.addEventListener('click', function(e) {
+                if (!newBtn.contains(e.target) && !newMenu.contains(e.target)) {
+                    newMenu.classList.add('hidden');
+                }
+            });
+
+            // 点击“新建逻辑表”菜单项，打开弹窗并渲染物理表列表
+            newTableMenu.addEventListener('click', function(e) {
+                e.preventDefault();
+                newMenu.classList.add('hidden');
+                openModal();
+            });
+
+            // 关闭弹窗按钮
+            closeModalBtn.addEventListener('click', closeModal);
+            cancelBtn.addEventListener('click', closeModal);
+
+            // 点击生成按钮
+            generateBtn.addEventListener('click', function() {
+                generateLogicalTables();
+                closeModal();
+            });
+
+            // 渲染目录下拉框和物理表列表
+            renderDirectorySelect();
+            renderPhysicalTableList();
+            
+            // 添加物理表列表的展开/折叠事件监听器
+            physicalTableList.addEventListener('click', function(e) {
+                const toggleBtn = e.target.closest('.toggle-btn');
+                if (toggleBtn) {
+                    togglePhysicalFolder(toggleBtn);
+                }
+            });
+
+        });
+        
+        // 切换文件夹展开/收起状态
+        function toggleFolder(toggleElement) {
+            const folderElement = toggleElement.closest('[data-type="folder"]');
+            const folderId = folderElement.getAttribute('data-id');
+            const targetContent = document.getElementById(`${folderId}-content`);
+            const icon = toggleElement.querySelector('i');
+            
+            // 切换内容显示状态
+            targetContent.classList.toggle('hidden');
+            
+            // 切换图标
+            if (targetContent.classList.contains('hidden')) {
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-right');
+            } else {
+                icon.classList.remove('fa-chevron-right');
+                icon.classList.add('fa-chevron-down');
+            }
+        }
+        
+        // 更新面包屑导航
+        function updateBreadcrumb(directoryId) {
+            const breadcrumbElement = document.getElementById('breadcrumb');
+            let breadcrumbHtml = '';
+            
+            // 构建面包屑路径
+            if (directoryId === 'root') {
+                // 根目录面包屑
+                breadcrumbHtml = `
+                    <span class="breadcrumb-item-current">${directoryNames[directoryId]}</span>
+                `;
+            } else if (directoryId === 'folder3') {
+                // 文件夹3的面包屑（根目录 -> 文件夹1 -> 文件夹3）
+                breadcrumbHtml = `
+                    <span class="breadcrumb-item" data-id="root">${directoryNames.root}</span>
+                    <span class="breadcrumb-separator">/</span>
+                    <span class="breadcrumb-item" data-id="folder1">${directoryNames.folder1}</span>
+                    <span class="breadcrumb-separator">/</span>
+                    <span class="breadcrumb-item-current">${directoryNames[directoryId]}</span>
+                `;
+            } else {
+                // 其他文件夹面包屑（根目录 -> 文件夹）
+                breadcrumbHtml = `
+                    <span class="breadcrumb-item" data-id="root">${directoryNames.root}</span>
+                    <span class="breadcrumb-separator">/</span>
+                    <span class="breadcrumb-item-current">${directoryNames[directoryId]}</span>
+                `;
+            }
+            
+            breadcrumbElement.innerHTML = breadcrumbHtml;
+            
+            // 为面包屑项添加点击事件
+            document.querySelectorAll('.breadcrumb-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const dirId = this.getAttribute('data-id');
+                    selectItem(dirId, dirId === 'root' ? 'directory' : 'folder');
+                    switchToTableManagementTab();
+                });
+            });
+        }
+        
+        // 选择目录树中的项目（文件夹、根目录或表）
+        function selectItem(itemId, itemType) {
+            // 移除所有项目的活跃状态
+            document.querySelectorAll('[data-type="folder"], [data-type="directory"], [data-type="table"]').forEach(item => {
+                item.classList.remove('item-active');
+            });
+            
+            // 添加当前选中项的样式
+            let itemElement;
+            if (itemType === 'directory' && itemId === 'root') {
+                itemElement = document.getElementById('root-directory');
+            } else {
+                itemElement = document.querySelector(`[data-type="${itemType}"][data-id="${itemId}"]`);
+            }
+            
+            if (itemElement) {
+                itemElement.classList.add('item-active');
+                
+                // 更新当前目录ID（仅针对文件夹和根目录）
+                if (itemType === 'folder' || itemType === 'directory') {
+                    currentDirectoryId = itemId;
+                }
+            }
+        }
+        
+        // 更新表管理内容 - 生成表格
+        function updateTableManagementContent(directoryId) {
+            const contentElement = document.getElementById('directory-content');
+            const tableData = tableManagementData[directoryId] || [];
+            
+            // 生成表格HTML
+            let tableHtml = `
+                <table class="min-w-full border border-gray-300">
+                    <thead>
+                        <tr class="list-header">
+                            <th class="px-4 py-2 border-b text-left">表名称</th>
+                            <th class="px-4 py-2 border-b text-left">表目录</th>
+                            <th class="px-4 py-2 border-b text-left">数据连接</th>
+                            <th class="px-4 py-2 border-b text-left">最近更新时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            // 添加表数据行
+            if (tableData.length > 0) {
+                tableData.forEach(row => {
+                    tableHtml += `
+                    <tr class="list-row">
+                        <td class="px-4 py-2 border-b">
+                            <span class="table-cell-hover" data-table-id="${row.id}">${row.name}</span>
+                        </td>
+                        <td class="px-4 py-2 border-b">${row.directory}</td>
+                        <td class="px-4 py-2 border-b">${row.connection}</td>
+                        <td class="px-4 py-2 border-b">${row.updateTime}</td>
+                    </tr>
+                    `;
+                });
+            } else {
+                tableHtml += `
+                <tr>
+                    <td colspan="4" class="px-4 py-2 text-center text-gray-500">
+                        该目录下没有表
+                    </td>
+                </tr>
+                `;
+            }
+            
+            tableHtml += `
+                    </tbody>
+                </table>
+            `;
+            
+            contentElement.innerHTML = tableHtml;
+            
+            // 为表格中的表名称添加点击事件
+            document.querySelectorAll('.table-cell-hover').forEach(cell => {
+                cell.addEventListener('click', function() {
+                    const tableId = this.getAttribute('data-table-id');
+                    const tableName = this.textContent;
+                    lastDirectoryId = currentDirectoryId;
+                    selectItem(tableId, 'table');
+                    openTableTab(tableId, tableName);
+                });
+            });
+        }
+        
+        // 切换到表管理标签
+        function switchToTableManagementTab() {
+            // 移除所有标签的活跃状态
+            document.querySelectorAll('.tab-item').forEach(tab => {
+                tab.classList.remove('tab-active');
+            });
+            
+            // 激活表管理标签
+            document.querySelector('[data-tab="table-management"]').classList.add('tab-active');
+            
+            // 隐藏所有内容区域
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // 显示表管理内容
+            document.getElementById('table-management-tab').classList.remove('hidden');
+            
+            // 更新面包屑和表格内容
+            updateBreadcrumb(currentDirectoryId);
+            updateTableManagementContent(currentDirectoryId);
+        }
+        
+        // 打开表标签
+        function openTableTab(tableId, tableName) {
+            // 检查标签是否已存在
+            let tabElement = document.querySelector(`[data-tab="${tableId}"]`);
+            
+            if (!tabElement) {
+                // 获取右侧标签页导航和内容容器
+                const tabContainer = document.getElementById('tab-container');
+                const contentContainer = document.getElementById('content-container');
+                
+                // 创建新标签
+                tabElement = document.createElement('div');
+                tabElement.className = 'tab-item px-4 py-2 border border-b-0 cursor-pointer';
+                tabElement.setAttribute('data-tab', tableId);
+                tabElement.innerHTML = `
+                    ${tableName}
+                    <button class="ml-2 close-tab text-gray-500 hover:text-gray-700">×</button>
+                `;
+                tabContainer.appendChild(tabElement);
+                
+                // 为新标签添加点击事件
+                tabElement.addEventListener('click', function(e) {
+                    if (!e.target.classList.contains('close-tab')) {
+                        switchToTab(tableId);
+                        // 同步选中目录树中的对应表
+                        selectItem(tableId, 'table');
+                    }
+                });
+                
+                // 为关闭按钮添加点击事件
+                tabElement.querySelector('.close-tab').addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    closeTab(tableId);
+                });
+                
+                // 创建标签内容
+                const contentElement = document.createElement('div');
+                contentElement.id = `${tableId}-tab`;
+                contentElement.className = 'tab-content hidden';
+                contentElement.innerHTML = generateTableContent(tableId, tableName);
+                contentContainer.appendChild(contentElement);
+            }
+            
+            // 修改1: 当点击表时，确保对应的标签页被选中
+            switchToTab(tableId);
+        }
+        
+        // 修改：重写表的详情内容生成函数
+        function generateTableContent(tableId, tableName) {
+            const tableInfo = tableManagementData.root.find(t => t.id === tableId) || {};
+            const detailData = tableDetailData[tableId] || { dataPreview: [], fieldInfo: [] };
+            const metadataLog = metadataLogData[tableId] || [];
+
+            const dataPreviewHtml = generateDataPreviewTable(detailData.dataPreview);
+            const fieldInfoHtml = generateFieldInfoTable(detailData.fieldInfo);
+            const metadataLogHtml = generateMetadataLogTable(metadataLog);
+
+            return `
+                <div class="space-y-6">
+                    <div>
+                        <h2 class="text-lg font-bold mb-2">基本信息</h2>
+                        <div class="bg-gray-100 p-4 rounded-md">
+                            <p><strong>逻辑表名:</strong> ${tableName}</p>
+                            <p><strong>数据连接:</strong> ${tableInfo.connection || '无'}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex border-b border-gray-300">
+                        <div class="px-4 py-2 cursor-pointer border-b-2 border-transparent hover:border-blue-600 font-semibold text-gray-600 tab-detail" data-tab-name="data-preview">数据预览</div>
+                        <div class="px-4 py-2 cursor-pointer border-b-2 border-transparent hover:border-blue-600 font-semibold text-gray-600 tab-detail" data-tab-name="field-info">字段信息</div>
+                        <div class="px-4 py-2 cursor-pointer border-b-2 border-transparent hover:border-blue-600 font-semibold text-gray-600 tab-detail" data-tab-name="metadata-log">元数据采集记录</div>
+                        <div class="px-4 py-2 cursor-pointer border-b-2 border-transparent hover:border-blue-600 font-semibold text-gray-600 tab-detail" data-tab-name="update-log">更新记录</div>
+                    </div>
+
+                    <div id="${tableId}-tab-content">
+                        <div id="data-preview-tab" class="detail-tab-content">
+                            ${dataPreviewHtml}
+                        </div>
+                        <div id="field-info-tab" class="detail-tab-content hidden">
+                            ${fieldInfoHtml}
+                        </div>
+                        <div id="metadata-log-tab" class="detail-tab-content hidden">
+                            ${metadataLogHtml}
+                        </div>
+                        <div id="update-log-tab" class="detail-tab-content hidden p-4 text-center text-gray-500">
+                            暂无更新记录。
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 新增：生成数据预览表格HTML
+        function generateDataPreviewTable(data) {
+            if (!data || data.length === 0) {
+                return '<div class="text-center text-gray-500 p-4">该表没有数据。</div>';
+            }
+            const headers = Object.keys(data[0]);
+            let tableHtml = `
+                <div class="overflow-x-auto">
+                    <table class="min-w-full border border-gray-300">
+                        <thead>
+                            <tr class="list-header">
+            `;
+            headers.forEach(header => {
+                tableHtml += `<th class="px-4 py-2 border-b text-left whitespace-nowrap">${header}</th>`;
+            });
+            tableHtml += `
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            data.forEach(row => {
+                tableHtml += `<tr class="list-row">`;
+                headers.forEach(header => {
+                    tableHtml += `<td class="px-4 py-2 border-b whitespace-nowrap">${row[header]}</td>`;
+                });
+                tableHtml += `</tr>`;
+            });
+            tableHtml += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            return tableHtml;
+        }
+
+        // 新增：生成字段信息表格HTML
+        function generateFieldInfoTable(data) {
+            if (!data || data.length === 0) {
+                return '<div class="text-center text-gray-500 p-4">暂无字段信息。</div>';
+            }
+            const headers = ['字段名', '数据类型', '长度', '主键', '非空', '默认值', '字段说明', '约束规则'];
+            let tableHtml = `
+                <div class="overflow-x-auto">
+                    <table class="min-w-full border border-gray-300">
+                        <thead>
+                            <tr class="list-header">
+            `;
+            headers.forEach(header => {
+                tableHtml += `<th class="px-4 py-2 border-b text-left whitespace-nowrap">${header}</th>`;
+            });
+            tableHtml += `
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            data.forEach(row => {
+                tableHtml += `<tr class="list-row">`;
+                headers.forEach(header => {
+                    tableHtml += `<td class="px-4 py-2 border-b whitespace-nowrap">${row[header]}</td>`;
+                });
+                tableHtml += `</tr>`;
+            });
+            tableHtml += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            return tableHtml;
+        }
+        
+        // 新增：生成元数据采集记录表格HTML
+        function generateMetadataLogTable(data) {
+            if (!data || data.length === 0) {
+                return '<div class="text-center text-gray-500 p-4">暂无元数据采集记录。</div>';
+            }
+            // 确保数据按时间倒序排列
+            const sortedData = [...data].sort((a, b) => new Date(b.time) - new Date(a.time));
+            const headers = ['记录ID', '采集时间', '采集结果'];
+            let tableHtml = `
+                <div class="overflow-x-auto">
+                    <table class="min-w-full border border-gray-300">
+                        <thead>
+                            <tr class="list-header">
+            `;
+            headers.forEach(header => {
+                tableHtml += `<th class="px-4 py-2 border-b text-left whitespace-nowrap">${header}</th>`;
+            });
+            tableHtml += `
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            sortedData.forEach(row => {
+                tableHtml += `<tr class="list-row">`;
+                headers.forEach(header => {
+                    tableHtml += `<td class="px-4 py-2 border-b whitespace-nowrap">${row[header]}</td>`;
+                });
+                tableHtml += `</tr>`;
+            });
+            tableHtml += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            return tableHtml;
+        }
+
+        // 切换到指定标签
+        function switchToTab(tabId) {
+            // 移除所有标签的活跃状态
+            document.querySelectorAll('.tab-item').forEach(tab => {
+                tab.classList.remove('tab-active');
+            });
+            
+            // 激活指定标签
+            const targetTab = document.querySelector(`[data-tab="${tabId}"]`);
+            if (targetTab) {
+                targetTab.classList.add('tab-active');
+            }
+            
+            // 隐藏所有内容区域
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // 显示指定标签内容
+            const contentElement = document.getElementById(`${tabId}-tab`);
+            if (contentElement) {
+                contentElement.classList.remove('hidden');
+                // 确保第一次打开时，默认选中第一个详情tab
+                const firstDetailTab = contentElement.querySelector('.tab-detail');
+                if(firstDetailTab) {
+                    firstDetailTab.click();
+                }
+                
+                // 新增：为详情页的tab添加点击事件
+                contentElement.querySelectorAll('.tab-detail').forEach(tab => {
+                    tab.addEventListener('click', function() {
+                        const tabName = this.getAttribute('data-tab-name');
+                        switchDetailTab(contentElement, tabName);
+                    });
+                });
+            }
+        }
+        
+        // 新增：切换详情页内的子Tab
+        function switchDetailTab(parentElement, tabName) {
+            // 移除所有详情tab的活跃样式
+            parentElement.querySelectorAll('.tab-detail').forEach(tab => {
+                tab.classList.remove('border-blue-600', 'font-semibold', 'text-gray-600');
+                tab.classList.add('border-transparent');
+            });
+            // 激活当前点击的详情tab
+            parentElement.querySelector(`[data-tab-name="${tabName}"]`).classList.add('border-blue-600', 'font-semibold', 'text-gray-600');
+            parentElement.querySelector(`[data-tab-name="${tabName}"]`).classList.remove('border-transparent');
+            
+            // 隐藏所有详情内容
+            parentElement.querySelectorAll('.detail-tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            // 显示当前点击的详情内容
+            parentElement.querySelector(`#${tabName}-tab`).classList.remove('hidden');
+        }
+
+        // 关闭标签
+        function closeTab(tabId) {
+            // 移除标签元素
+            const tabElement = document.querySelector(`[data-tab="${tabId}"]`);
+            if (tabElement) {
+                tabElement.remove();
+            }
+            
+            // 移除标签内容
+            const contentElement = document.getElementById(`${tabId}-tab`);
+            if (contentElement) {
+                contentElement.remove();
+            }
+            
+            // 如果关闭的是当前活跃标签，切换到表管理
+            if (tabElement.classList.contains('tab-active')) {
+                switchToTableManagementTab();
+                // 同步选中目录树中的上次目录
+                selectItem(lastDirectoryId, lastDirectoryId === 'root' ? 'directory' : 'folder');
+            }
+        }
+
+        // 新增弹窗函数
+        function openModal() {
+            const newTableModal = document.getElementById('new-table-modal');
+            newTableModal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden'); // 防止背景滚动
+        }
+
+        function closeModal() {
+            const newTableModal = document.getElementById('new-table-modal');
+            newTableModal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        // 渲染目录下拉框的函数
+        function renderDirectorySelect() {
+            const selectElement = document.getElementById('directory-select');
+            selectElement.innerHTML = '';
+            
+            function generateOptions(data, path = [], indent = '') {
+                data.forEach(item => {
+                    const fullPath = [...path, item.id];
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.textContent = `${indent}${item.name}`;
+                    selectElement.appendChild(option);
+                    
+                    if (item.children) {
+                        generateOptions(item.children, fullPath, `${indent}  `);
+                    }
+                });
+            }
+            generateOptions(directoryTree);
+            selectElement.value = currentDirectoryId;
+        }
+
+        // 渲染物理表列表
+        function renderPhysicalTableList() {
+            const physicalTableList = document.getElementById('physical-table-list');
+            physicalTableList.innerHTML = ''; // 清空列表
+            let html = '';
+
+            function generateListHtml(data, indentLevel = 0) {
+                data.forEach(item => {
+                    if (item.children) { // 文件夹
+                        const hasChildren = item.children.length > 0;
+                        html += `
+                            <div class="flex items-center p-2 hover:bg-gray-100 cursor-pointer" style="padding-left: ${1.5 * indentLevel}rem;" data-type="physical-folder" data-id="${item.id}">
+                                <div class="flex items-center">
+                                    <input type="checkbox" class="form-checkbox text-primary rounded" data-type="folder-checkbox" data-id="${item.id}">
+                                    <span class="toggle-btn ml-2 mr-1">
+                                        <i class="fa ${hasChildren ? 'fa-chevron-down' : 'fa-chevron-right'} text-gray-500"></i>
+                                    </span>
+                                </div>
+                                <i class="fa fa-folder text-yellow-500 mr-2"></i>
+                                <span>${item.name}</span>
+                            </div>
+                            <div id="${item.id}-content" style="padding-left: ${1.5 * (indentLevel + 1)}rem; ${hasChildren ? '' : 'display: none;'}">
+                        `;
+                        generateListHtml(item.children, indentLevel + 1);
+                        html += `</div>`;
+                    } else { // 表
+                        const tableName = item.name;
+                        html += `
+                            <div class="flex items-center p-2 hover:bg-gray-100 cursor-pointer">
+                                <input type="checkbox" class="form-checkbox text-primary rounded" data-table-id="${item.id}" data-table-name="${tableName}" data-parent-id="${item.parentId}">
+                                <i class="fa fa-table text-green-600 mr-2 ml-2"></i>
+                                <span>${tableName}</span>
+                            </div>
+                        `;
+                    }
+                });
+            }
+
+            // 递归遍历数据，并为子节点添加父ID
+            function processData(data, parentId = null) {
+                return data.map(item => {
+                    const newItem = { ...item, parentId };
+                    if (item.children) {
+                        newItem.children = processData(item.children, item.id);
+                    }
+                    return newItem;
+                });
+            }
+
+            const processedData = processData(physicalTableData);
+            generateListHtml(processedData);
+            physicalTableList.innerHTML = html;
+            
+            // 为物理表勾选框添加事件监听器
+            const checkboxes = physicalTableList.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function(e) {
+                    if (this.getAttribute('data-type') === 'folder-checkbox') {
+                        // 文件夹复选框的逻辑
+                        handleFolderCheckbox(this);
+                    } else {
+                        // 表复选框的逻辑
+                        handleTableCheckbox(this);
+                    }
+                    updateGenerateButtonText();
+                });
+            });
+        }
+        
+        // 新增：物理表文件夹切换展开/收起状态
+        function togglePhysicalFolder(toggleElement) {
+            const folderElement = toggleElement.closest('[data-type="physical-folder"]');
+            const folderId = folderElement.getAttribute('data-id');
+            const targetContent = document.getElementById(`${folderId}-content`);
+            const icon = toggleElement.querySelector('i');
+            
+            if (targetContent) {
+                // 切换内容显示状态
+                targetContent.classList.toggle('hidden');
+                
+                // 切换图标
+                if (targetContent.classList.contains('hidden')) {
+                    icon.classList.remove('fa-chevron-down');
+                    icon.classList.add('fa-chevron-right');
+                } else {
+                    icon.classList.remove('fa-chevron-right');
+                    icon.classList.add('fa-chevron-down');
+                }
+            }
+        }
+
+        // 新增：处理文件夹复选框的逻辑
+        function handleFolderCheckbox(folderCheckbox) {
+            const folderId = folderCheckbox.getAttribute('data-id');
+            const childCheckboxes = document.querySelectorAll(`#${folderId}-content input[type="checkbox"]`);
+            
+            childCheckboxes.forEach(childCheckbox => {
+                childCheckbox.checked = folderCheckbox.checked;
+                // 如果子节点是文件夹，递归处理
+                if (childCheckbox.getAttribute('data-type') === 'folder-checkbox') {
+                    handleFolderCheckbox(childCheckbox);
+                }
+            });
+        }
+
+        // 新增：处理表复选框的逻辑
+        function handleTableCheckbox(tableCheckbox) {
+            const parentId = tableCheckbox.getAttribute('data-parent-id');
+            if (!parentId) return;
+            
+            const parentFolderCheckbox = document.querySelector(`[data-type="folder-checkbox"][data-id="${parentId}"]`);
+            if (!parentFolderCheckbox) return;
+
+            const siblingTableCheckboxes = document.querySelectorAll(`#${parentId}-content input[type="checkbox"][data-type="folder-checkbox"], #${parentId}-content input[type="checkbox"]:not([data-type="folder-checkbox"])`);
+            
+            const allChecked = Array.from(siblingTableCheckboxes).every(cb => cb.checked);
+            const noneChecked = Array.from(siblingTableCheckboxes).every(cb => !cb.checked);
+            
+            if (allChecked) {
+                parentFolderCheckbox.checked = true;
+                parentFolderCheckbox.indeterminate = false;
+            } else if (noneChecked) {
+                parentFolderCheckbox.checked = false;
+                parentFolderCheckbox.indeterminate = false;
+            } else {
+                parentFolderCheckbox.checked = false;
+                parentFolderCheckbox.indeterminate = true;
+            }
+        }
+
+        // 更新生成按钮文本
+        function updateGenerateButtonText() {
+            const selectedCount = document.querySelectorAll('#physical-table-list input[type="checkbox"]:checked:not([data-type="folder-checkbox"])').length;
+            const generateBtn = document.getElementById('generate-btn');
+            generateBtn.textContent = `生成 ${selectedCount} 张逻辑表`;
+        }
+
+        // 生成逻辑表并添加到目录树
+        function generateLogicalTables() {
+            const selectedCheckboxes = document.querySelectorAll('#physical-table-list input[type="checkbox"]:checked:not([data-type="folder-checkbox"])');
+            const directorySelect = document.getElementById('directory-select');
+            const parentDirectoryId = directorySelect.value;
+            
+            // 找到正确的父容器来添加新表
+            const parentContainer = document.querySelector(`[data-type="folder"][data-id="${parentDirectoryId}"]`) ? document.getElementById(`${parentDirectoryId}-content`) : document.getElementById('root-directory').parentElement;
+            
+            selectedCheckboxes.forEach(checkbox => {
+                const physicalTableName = checkbox.getAttribute('data-table-name');
+                const newTableId = `logical-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                const newTableName = `数据连接 A_${physicalTableName}`;
+                const newTableData = {
+                    id: newTableId,
+                    name: newTableName,
+                    directory: directoryNames[parentDirectoryId],
+                    connection: "数据连接 A",
+                    updateTime: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-') + ' ' + new Date().toLocaleTimeString('zh-CN', { hour12: false })
+                };
+
+                // 修改：当所属目录为根目录时，只添加一次数据
+                if (parentDirectoryId === 'root') {
+                    tableManagementData.root.push(newTableData);
+                } else {
+                    // 如果所属目录不是根目录，则同时添加到根目录数据和所属目录数据中
+                    tableManagementData.root.push(newTableData);
+                    if (!tableManagementData[parentDirectoryId]) {
+                        tableManagementData[parentDirectoryId] = [];
+                    }
+                    tableManagementData[parentDirectoryId].push(newTableData);
+                }
+
+                // 添加新的表详情数据，使用与已有表相同的结构
+                tableDetailData[newTableId] = {
+                    dataPreview: tableDetailData.table1.dataPreview,
+                    fieldInfo: tableDetailData.table1.fieldInfo,
+                };
+                
+                // 新增：为新表添加模拟采集记录数据
+                metadataLogData[newTableId] = [
+                    { id: '1', time: new Date().toISOString(), result: '已变更' },
+                    { id: '2', time: new Date(Date.now() - 86400000).toISOString(), result: '无变更' },
+                    { id: '3', time: new Date(Date.now() - 172800000).toISOString(), result: '已变更' },
+                ];
+
+                const newTableHtml = `
+                    <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="${newTableId}" data-parent="${parentDirectoryId}">
+                        <i class="fa fa-table text-green-600 mr-3"></i>
+                        <span>${newTableName}</span>
+                    </div>
+                `;
+                
+                // 将新表插入到正确的父容器中
+                parentContainer.insertAdjacentHTML('beforeend', newTableHtml);
+
+                // 为新元素添加事件监听器
+                const newTableElement = parentContainer.querySelector(`[data-id="${newTableId}"]`);
+                if (newTableElement) {
+                    newTableElement.addEventListener('click', function() {
+                        const tableId = this.getAttribute('data-id');
+                        const tableName = this.querySelector('span').textContent;
+                        lastDirectoryId = currentDirectoryId;
+                        selectItem(tableId, 'table');
+                        openTableTab(tableId, tableName);
+                    });
+                }
+            });
+
+            // 重置勾选框和按钮文本
+            document.querySelectorAll('#physical-table-list input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+                checkbox.indeterminate = false;
+            });
+            updateGenerateButtonText();
+            // 切换回表管理页面并刷新表格
+            switchToTableManagementTab();
+            updateTableManagementContent(currentDirectoryId);
+        }
+    </script>
+</body></html>

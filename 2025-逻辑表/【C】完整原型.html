@@ -1,0 +1,3654 @@
+<html lang="zh-CN"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>低保真交互原型</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#f3f4f6',
+                        active: '#dbeafe',
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .tree-indent {
+                padding-left: 1.5rem;
+            }
+            .tab-active {
+                @apply bg-active border-primary;
+            }
+            .item-active {
+                @apply bg-active;
+            }
+            .toggle-btn {
+                width: 1.25rem;
+                text-align: center;
+                cursor: pointer;
+            }
+            .list-header {
+                @apply bg-gray-100 font-semibold;
+            }
+            .list-row {
+                @apply border-b border-gray-200 hover:bg-gray-50;
+            }
+            .table-cell-hover {
+                @apply hover:underline cursor-pointer text-blue-600;
+            }
+            .breadcrumb-separator {
+                @apply mx-2 text-gray-500;
+            }
+            .breadcrumb-item {
+                @apply hover:text-blue-600 cursor-pointer;
+            }
+            .breadcrumb-item-current {
+                @apply text-gray-700 font-medium;
+            }
+            /* 新增半选状态样式 */
+            .indeterminate:checked {
+                background-color: transparent !important;
+                border-color: #3b82f6 !important;
+                position: relative;
+            }
+            .indeterminate:checked::before {
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 0.6rem;
+                height: 0.15rem;
+                background-color: #3b82f6;
+            }
+            /* 隐藏半选状态的勾 */
+            .indeterminate:checked::after {
+                content: none;
+            }
+            /* 状态样式 */
+            .status-queue { @apply bg-yellow-100 text-yellow-800; }
+            .status-building { @apply bg-blue-100 text-blue-800; }
+            .status-running { @apply bg-purple-100 text-purple-800; }
+            .status-success { @apply bg-green-100 text-green-800; }
+            .status-build-failed { @apply bg-red-100 text-red-800; }
+            .status-run-failed { @apply bg-red-100 text-red-800; }
+            .status-interrupted { @apply bg-gray-100 text-gray-800; }
+            .result-collecting { @apply bg-blue-100 text-blue-800; }
+            .result-no-change { @apply bg-gray-100 text-gray-800; }
+            .result-changed { @apply bg-green-100 text-green-800; }
+            .result-failed { @apply bg-red-100 text-red-800; }
+            .result-init { @apply bg-purple-100 text-purple-800; }
+            /* 表管理列表中的采集结果状态样式 */
+            .collection-status-collecting { @apply bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs; }
+            .collection-status-no-change { @apply bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs; }
+            .collection-status-changed { @apply bg-green-100 text-green-800 px-2 py-1 rounded text-xs; }
+            .collection-status-failed { @apply bg-red-100 text-red-800 px-2 py-1 rounded text-xs; }
+            .collection-status-init { @apply bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs; }
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden border border-gray-300">
+    <div class="w-1/4 border-r border-gray-300 overflow-y-auto p-4 bg-gray-50">
+        <div class="flex items-center justify-between mb-4 border-b border-gray-300 pb-2">
+            <h2 class="text-lg font-bold">逻辑数据</h2>
+            <div class="flex items-center">
+                <button id="open-plan-btn" class="text-primary hover:text-blue-700 px-2 py-1 rounded mr-2">采集计划管理</button>
+                <div class="relative">
+                    <button id="new-btn" class="text-primary hover:text-blue-700 px-2 py-1 rounded">新建</button>
+                    <div id="new-menu" class="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-10 hidden">
+                        <a href="#" id="new-table-menu" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">新建逻辑表</a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">新建文件夹</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 搜索框 -->
+        <div class="mb-4">
+            <div class="relative">
+                <input type="text" id="search-input" placeholder="搜索文件夹/表名称..." 
+                       class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                    <i id="search-icon" class="fa fa-search text-gray-400"></i>
+                    <i id="clear-icon" class="fa fa-times text-gray-400 cursor-pointer hover:text-gray-600 hidden"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-2">
+            <div id="root-directory" class="flex items-center p-2 hover:bg-gray-100 cursor-pointer" data-id="root" data-type="directory">
+                <i class="fa fa-database mr-2 text-blue-600"></i>
+                <span>根目录</span>
+            </div>
+            
+            <div class="mb-1 tree-indent">
+                <div class="flex items-center p-2 hover:bg-gray-100 cursor-pointer" data-type="folder" data-id="folder1">
+                    <span class="toggle-btn mr-1">
+                        <i class="fa fa-chevron-down text-gray-500"></i>
+                    </span>
+                    <i class="fa fa-folder text-yellow-500 mr-2"></i>
+                    <span>文件夹1</span>
+                </div>
+                <div id="folder1-content" class="tree-indent">
+                    <div class="mb-1 tree-indent">
+                        <div class="flex items-center p-2 hover:bg-gray-100 cursor-pointer" data-type="folder" data-id="folder3">
+                            <span class="toggle-btn mr-1">
+                                <i class="fa fa-chevron-right text-gray-500"></i>
+                            </span>
+                            <i class="fa fa-folder text-yellow-500 mr-2"></i>
+                            <span>文件夹3</span>
+                        </div>
+                        <div id="folder3-content" class="tree-indent hidden">
+                            <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="table7" data-parent="folder3">
+                                <i class="fa fa-table text-green-600 mr-3"></i>
+                                <span>数据连接A-表7</span>
+                            </div>
+                            <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="table8" data-parent="folder3">
+                                <i class="fa fa-table text-green-600 mr-3"></i>
+                                <span>数据连接A-表8</span>
+                            </div>
+                            <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="table9" data-parent="folder3">
+                                <i class="fa fa-table text-green-600 mr-3"></i>
+                                <span>数据连接A-表9</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="table1" data-parent="folder1">
+                        <i class="fa fa-table text-green-600 mr-3"></i>
+                        <span>数据连接A-表1</span>
+                    </div>
+                    <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="table2" data-parent="folder1">
+                        <i class="fa fa-table text-green-600 mr-3"></i>
+                        <span>数据连接A-表2</span>
+                    </div>
+                    <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="table3" data-parent="folder1">
+                        <i class="fa fa-table text-green-600 mr-3"></i>
+                        <span>数据连接A-表3</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-1 tree-indent">
+                <div class="flex items-center p-2 hover:bg-gray-100 cursor-pointer" data-type="folder" data-id="folder2">
+                    <span class="toggle-btn mr-1">
+                        <i class="fa fa-chevron-right text-gray-500"></i>
+                    </span>
+                    <i class="fa fa-folder text-yellow-500 mr-2"></i>
+                    <span>文件夹2</span>
+                </div>
+                <div id="folder2-content" class="tree-indent hidden">
+                    <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="table4" data-parent="folder2">
+                        <i class="fa fa-table text-green-600 mr-3"></i>
+                        <span>数据连接B-表4</span>
+                    </div>
+                    <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="table5" data-parent="folder2">
+                        <i class="fa fa-table text-green-600 mr-3"></i>
+                        <span>数据连接B-表5</span>
+                    </div>
+                    <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="table6" data-parent="folder2">
+                        <i class="fa fa-table text-green-600 mr-3"></i>
+                        <span>数据连接B-表6</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="w-3/4 flex flex-col overflow-hidden">
+        <div class="flex border-b border-gray-300 bg-gray-50" id="tab-container">
+            <div class="tab-item tab-active px-4 py-2 border border-b-0 cursor-pointer" data-tab="table-management">表管理</div>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto p-4" id="content-container">
+            <div id="table-management-tab" class="tab-content">
+                <h2 class="text-lg font-bold mb-4">表管理</h2>
+                
+                <div id="breadcrumb" class="mb-4 text-sm">
+                    </div>
+                
+                <div id="directory-content" class="overflow-x-auto">
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 全屏覆盖：采集计划管理 -->
+    <div id="plan-overlay" class="fixed inset-0 bg-white z-50 hidden overflow-auto">
+        <div class="flex items-center justify-between border-b border-gray-300 p-4">
+            <div class="flex items-center space-x-2">
+                <button id="plan-back-btn" class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded">返回</button>
+                <h2 class="text-lg font-bold">采集计划管理</h2>
+            </div>
+        </div>
+        <div class="flex h-[calc(100vh-60px)]">
+            <!-- 左侧：数据连接列表 -->
+            <div class="w-64 border-r border-gray-200 p-4 overflow-y-auto">
+                <h3 class="font-semibold mb-2">数据连接</h3>
+                <div id="plan-conn-list" class="space-y-1"></div>
+            </div>
+            <!-- 右侧：详情区 -->
+            <div class="flex-1 p-4 overflow-y-auto">
+                <!-- 基本信息 -->
+                <div class="mb-4">
+                    <h3 class="font-semibold mb-2">基本信息</h3>
+                    <div id="plan-basic-info" class="bg-gray-100 p-4 rounded-md text-sm"></div>
+                </div>
+                <!-- 调度计划 -->
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-semibold">定时调度计划</h3>
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm text-gray-600">调度状态：</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="schedule-switch" class="sr-only peer" checked>
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    <span id="schedule-status-text" class="ml-2 text-sm font-medium text-green-600">已开启</span>
+                                </label>
+                            </div>
+                            <div class="space-x-2">
+                                <button class="px-3 py-1 bg-blue-500 text-white rounded opacity-80">立即运行</button>
+                                <button class="px-3 py-1 bg-gray-200 rounded opacity-80">编辑</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="plan-schedule" class="bg-white border border-gray-200 rounded-md p-4 text-sm"></div>
+                </div>
+                <!-- Segment 切换 -->
+                <div>
+                    <div class="inline-flex rounded-md overflow-hidden border border-gray-200">
+                        <button id="seg-table" class="px-4 py-2 bg-active">表配置</button>
+                        <button id="seg-runs" class="px-4 py-2">运行记录</button>
+                    </div>
+                    <div id="plan-seg-container" class="mt-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 表采集详情弹窗 -->
+        <div id="run-detail-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
+            <div class="bg-white p-6 rounded-lg shadow-xl w-3/4 max-w-3xl max-h-[80vh] flex flex-col">
+                <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                    <h3 class="text-lg font-bold">表采集详情</h3>
+                    <button id="run-detail-close" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                </div>
+                <div class="flex-1 overflow-y-auto mt-4 pr-2" id="run-detail-content"></div>
+                <div class="flex justify-end items-center pt-4 border-t border-gray-200 mt-4">
+                    <button id="run-detail-ok" class="bg-primary text-white px-4 py-2 rounded-md">确定</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 运行日志弹窗 -->
+    <div id="run-log-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-[60]">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-2/3 max-w-4xl max-h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                <h3 class="text-lg font-bold">运行日志</h3>
+                <button id="run-log-close" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="flex-1 overflow-y-auto mt-4 pr-2">
+                <div id="run-log-content" class="bg-gray-900 text-green-400 p-4 rounded font-mono text-sm whitespace-pre-line"></div>
+            </div>
+            <div class="flex justify-end items-center pt-4 border-t border-gray-200 mt-4">
+                <button id="run-log-ok" class="bg-primary text-white px-4 py-2 rounded-md">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 逻辑表元数据采集记录日志弹窗 -->
+    <div id="metadata-log-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-[60]">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-2/3 max-w-4xl max-h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                <h3 class="text-lg font-bold">元数据采集记录日志</h3>
+                <button id="metadata-log-close" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="flex-1 overflow-y-auto mt-4 pr-2">
+                <div id="metadata-log-content" class="bg-gray-900 text-green-400 p-4 rounded font-mono text-sm whitespace-pre-line"></div>
+            </div>
+            <div class="flex justify-end items-center pt-4 border-t border-gray-200 mt-4">
+                <button id="metadata-log-ok" class="bg-primary text-white px-4 py-2 rounded-md">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 删除确认弹窗 -->
+    <div id="delete-confirmation-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-[60]">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-96 max-w-md">
+            <div class="flex items-center mb-4">
+                <div class="flex-shrink-0 w-10 h-10 mx-auto bg-red-100 rounded-full flex items-center justify-center">
+                    <i class="fa fa-exclamation-triangle text-red-600 text-xl"></i>
+                </div>
+            </div>
+            <div class="text-center">
+                <h3 class="text-lg font-medium text-gray-900 mb-2">确认删除</h3>
+                <p class="text-sm text-gray-500 mb-6">逻辑表删除后不可恢复，确认删除？</p>
+                <div class="flex space-x-3 justify-center">
+                    <button id="delete-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                        取消
+                    </button>
+                    <button id="delete-confirm-btn" class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500">
+                        确认
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 成功提示Toast -->
+    <div id="success-toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 -translate-y-full bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg transition-all duration-300 z-[70] hidden">
+        <div class="flex items-center">
+            <i class="fa fa-check-circle mr-2"></i>
+            <span id="success-message">操作成功</span>
+        </div>
+    </div>
+
+    <div id="new-table-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-[60]">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-3/4 max-w-2xl max-h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                <h3 class="text-lg font-bold">新建逻辑表</h3>
+                <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto mt-4 pr-2">
+                <p class="text-sm text-gray-500 mb-4">逻辑表本身不包含数据，需根据物理表采集对应的技术元数据</p>
+                
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="font-semibold mb-2">生成逻辑表</h4>
+                        <div class="flex items-center space-x-4">
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="creation-method" value="select" class="form-radio text-primary" checked>
+                                <span class="ml-2">选表采集</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="creation-method" value="sql" class="form-radio text-primary">
+                                <span class="ml-2">SQL 采集</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-semibold mb-2">所属目录</h4>
+                        <select id="directory-select" class="block w-full border border-gray-300 rounded-md p-2">
+                            </select>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-semibold mb-2">逻辑表名称</h4>
+                        <p class="text-sm text-gray-500">根据所选物理表自动生成默认名称：数据连接名_物理表名</p>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-semibold mb-2">采集配置</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex items-center space-x-2">
+                                <h5 class="w-20 font-medium text-gray-600">数据连接:</h5>
+                                <select class="border border-gray-300 rounded-md p-1">
+                                    <option>MySQL</option>
+                                </select>
+                                <select class="border border-gray-300 rounded-md p-1">
+                                    <option>数据连接 A</option>
+                                </select>
+                                <button class="bg-gray-200 text-gray-800 px-3 py-1 rounded-md hover:bg-gray-300">测试连接</button>
+                            </div>
+                            
+                            <!-- SQL语句编辑框 - 仅在选择SQL采集时显示 -->
+                            <div id="sql-config-section" class="hidden">
+                                <h5 class="font-medium mb-2">SQL语句：</h5>
+                                <textarea 
+                                    id="sql-statement" 
+                                    placeholder="请输入查询SQL语句..." 
+                                    class="w-full border border-gray-300 rounded-md p-3 resize-y font-mono text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    rows="4"
+                                    style="min-height: 100px; max-height: 200px;"
+                                ></textarea>
+                                <div class="text-xs text-gray-500 mt-1">
+                                    支持常见快捷键：Ctrl+C/Ctrl+V/Ctrl+Z等，可拖动右下角调整高度
+                                </div>
+                            </div>
+                            
+                            <div id="table-selection-section">
+                                <h5 class="font-medium mb-2">选择物理表</h5>
+                                <div id="physical-table-list" class="border border-gray-300 rounded-md h-60 overflow-y-auto p-2">
+                                    </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end items-center pt-4 border-t border-gray-200 mt-4 space-x-2">
+                <button id="cancel-btn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">取消</button>
+                <button id="generate-btn" class="bg-primary text-white px-4 py-2 rounded-md hover:bg-blue-700">生成 0 张逻辑表</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 目录名称映射
+        const directoryNames = {
+            'root': '根目录',
+            'folder1': '文件夹1',
+            'folder2': '文件夹2',
+            'folder3': '文件夹3'
+        };
+
+        // 目录树数据结构，用于生成下拉框
+        const directoryTree = [
+            { id: 'root', name: '根目录', children: [
+                { id: 'folder1', name: '文件夹1', children: [
+                    { id: 'folder3', name: '文件夹3' }
+                ]},
+                { id: 'folder2', name: '文件夹2' }
+            ]}
+        ];
+        
+        // 采集计划管理：模拟数据 - 独立状态存储
+        const planConnections = [
+            { id: 'conn-1', name: '数据连接 A', type: 'MySQL', scheduleEnabled: true },
+            { id: 'conn-2', name: '数据连接 B', type: 'PostgreSQL', scheduleEnabled: false },
+            { id: 'conn-3', name: '数据连接 C', type: 'Oracle', scheduleEnabled: true },
+            { id: 'conn-4', name: '数据连接 D', type: 'SQL Server', scheduleEnabled: false },
+            { id: 'conn-5', name: '数据连接 E', type: 'ClickHouse', scheduleEnabled: true },
+        ];
+        
+        // 独立的状态存储管理器
+        const scheduleStateManager = {
+            // 从本地存储加载状态
+            loadState: function(connId) {
+                const stored = localStorage.getItem(`schedule_status_${connId}`);
+                return stored ? JSON.parse(stored) : null;
+            },
+            
+            // 保存状态到本地存储
+            saveState: function(connId, enabled) {
+                const state = {
+                    connId: connId,
+                    enabled: enabled,
+                    timestamp: new Date().toISOString()
+                };
+                localStorage.setItem(`schedule_status_${connId}`, JSON.stringify(state));
+            },
+            
+            // 获取连接的状态
+            getConnectionState: function(connId) {
+                const stored = this.loadState(connId);
+                if (stored) {
+                    return stored.enabled;
+                }
+                // 如果没有存储的状态，使用默认值
+                const connection = planConnections.find(conn => conn.id === connId);
+                return connection ? connection.scheduleEnabled : false;
+            },
+            
+            // 更新连接状态
+            updateConnectionState: function(connId, enabled) {
+                // 更新内存中的数据
+                const connection = planConnections.find(conn => conn.id === connId);
+                if (connection) {
+                    connection.scheduleEnabled = enabled;
+                }
+                
+                // 保存到本地存储
+                this.saveState(connId, enabled);
+            }
+        };
+        let planCurrentConnId = null;
+        
+        // 数据同步管理器
+        const dataSyncManager = {
+            // 同步采集记录到表管理数据
+            syncCollectionData: function(tableId) {
+                if (!tableDetailData[tableId] || !tableDetailData[tableId].metadataLogs.length) {
+                    return;
+                }
+                
+                const latestLog = tableDetailData[tableId].metadataLogs[0];
+                
+                // 更新所有目录中的表数据
+                Object.keys(tableManagementData).forEach(directoryId => {
+                    const tableInDir = tableManagementData[directoryId].find(t => t.id === tableId);
+                    if (tableInDir) {
+                        tableInDir.lastCollectionResult = latestLog.result;
+                        tableInDir.lastCollectionTime = latestLog.endTime;
+                    }
+                });
+                
+                // 刷新当前表格显示
+                updateTableManagementContent(currentDirectoryId);
+            },
+            
+            // 同步表管理数据到采集记录
+            syncTableDataToCollection: function(tableId, result, time) {
+                if (!tableDetailData[tableId]) {
+                    tableDetailData[tableId] = { dataPreview: [], fieldInfo: [], metadataLogs: [] };
+                }
+                
+                // 更新或创建采集记录
+                const existingLog = tableDetailData[tableId].metadataLogs[0];
+                if (existingLog) {
+                    existingLog.result = result;
+                    existingLog.endTime = time;
+                } else {
+                    const newLog = {
+                        id: `log-${tableId}-${Date.now()}`,
+                        triggerType: '系统同步',
+                        result: result,
+                        endTime: time,
+                        runStatus: result === '采集失败' ? '失败' : '成功',
+                        logContent: `系统同步更新采集状态: ${result}`
+                    };
+                    tableDetailData[tableId].metadataLogs.unshift(newLog);
+                }
+            },
+            
+            // 验证数据一致性
+            validateDataConsistency: function() {
+                const inconsistencies = [];
+                
+                Object.keys(tableManagementData).forEach(directoryId => {
+                    tableManagementData[directoryId].forEach(table => {
+                        const detailData = tableDetailData[table.id];
+                        if (detailData && detailData.metadataLogs.length > 0) {
+                            const latestLog = detailData.metadataLogs[0];
+                            if (table.lastCollectionResult !== latestLog.result || 
+                                table.lastCollectionTime !== latestLog.endTime) {
+                                inconsistencies.push({
+                                    tableId: table.id,
+                                    tableName: table.name,
+                                    directory: directoryId,
+                                    tableManagement: {
+                                        result: table.lastCollectionResult,
+                                        time: table.lastCollectionTime
+                                    },
+                                    collectionRecord: {
+                                        result: latestLog.result,
+                                        time: latestLog.endTime
+                                    }
+                                });
+                            }
+                        }
+                    });
+                });
+                
+                return inconsistencies;
+            }
+        };
+        
+        const planScheduleData = {
+            'conn-1': { start: '2024-04-01 00:00:00', freq: '每日 02:00', next: '2024-04-10 02:00:00', end: '-' },
+            'conn-2': { start: '2024-04-02 08:00:00', freq: '每周一 08:00', next: '2024-04-15 08:00:00', end: '-' },
+            'conn-3': { start: '2024-04-03 09:30:00', freq: '每小时', next: '2024-04-10 10:30:00', end: '-' },
+            'conn-4': { start: '2024-04-05 01:00:00', freq: '每日 01:00', next: '2024-04-10 01:00:00', end: '-' },
+            'conn-5': { start: '2024-04-06 03:15:00', freq: '每周日 03:15', next: '2024-04-14 03:15:00', end: '-' },
+        };
+        
+        // 每个连接的“表配置”示例数据
+        const planTablesData = {
+            // 明确关联：
+            // conn-1 -> table1, table2
+            'conn-1': [
+                { id: 'table1', name: '数据连接A-表1', fullName: '数据连接A-表1', dir: '文件夹1', desc: '订单主表' },
+                { id: 'table2', name: '数据连接A-表2', fullName: '数据连接A-表2', dir: '文件夹1', desc: '订单明细表' },
+            ],
+            // conn-2 -> table3, table4
+            'conn-2': [
+                { id: 'table3', name: '数据连接A-表3', fullName: '数据连接A-表3', dir: '文件夹1', desc: '用户表' },
+                { id: 'table4', name: '数据连接B-表4', fullName: '数据连接B-表4', dir: '文件夹2', desc: '商品表' },
+            ],
+            // conn-3 -> table5, table6
+            'conn-3': [
+                { id: 'table5', name: '数据连接B-表5', fullName: '数据连接B-表5', dir: '文件夹2', desc: '库存表' },
+                { id: 'table6', name: '数据连接B-表6', fullName: '数据连接B-表6', dir: '文件夹2', desc: '发货表' },
+            ],
+            // conn-4 -> table7, table8
+            'conn-4': [
+                { id: 'table7', name: '数据连接A-表7', fullName: '数据连接A-表7', dir: '文件夹1/文件夹3', desc: '日志表' },
+                { id: 'table8', name: '数据连接A-表8', fullName: '数据连接A-表8', dir: '文件夹1/文件夹3', desc: '配置表' },
+            ],
+            // conn-5 -> table9
+            'conn-5': [
+                { id: 'table9', name: '数据连接A-表9', fullName: '数据连接A-表9', dir: '文件夹1/文件夹3', desc: '会话表' },
+            ],
+        };
+        
+        // 每个连接的"运行记录"示例数据
+        const planRunsData = {
+            'conn-1': [
+                { 
+                    count: 2, 
+                    trigger: '定时', 
+                    status: '成功', 
+                    log: '完成2张表采集', 
+                    details: [ 
+                        { 
+                            id: 'table1', 
+                            name: '数据连接A-表1', 
+                            database: 'demo1',
+                            physicalTable: 'table1',
+                            endTime: '2024-04-08 12:10:15',
+                            result: '有变更' 
+                        }, 
+                        { 
+                            id: 'table2', 
+                            name: '数据连接A-表2', 
+                            database: 'demo1',
+                            physicalTable: 'table2',
+                            endTime: '2024-04-08 12:10:15',
+                            result: '无变更' 
+                        } 
+                    ] 
+                },
+                { 
+                    count: 2, 
+                    trigger: '手动', 
+                    status: '成功', 
+                    log: '完成2张表采集', 
+                    details: [ 
+                        { 
+                            id: 'table1', 
+                            name: '数据连接A-表1', 
+                            database: 'demo1',
+                            physicalTable: 'table1',
+                            endTime: '2024-04-09 10:45:30',
+                            result: '无变更' 
+                        }, 
+                        { 
+                            id: 'table2', 
+                            name: '数据连接A-表2', 
+                            database: 'demo1',
+                            physicalTable: 'table2',
+                            endTime: '2024-04-09 10:45:30',
+                            result: '有变更' 
+                        } 
+                    ] 
+                },
+            ],
+            'conn-2': [
+                { 
+                    count: 1, 
+                    trigger: '定时', 
+                    status: '成功', 
+                    log: '完成1张表采集', 
+                    details: [ 
+                        { 
+                            id: 'table3', 
+                            name: '数据连接B-表3', 
+                            database: 'demo2',
+                            physicalTable: 'table3',
+                            endTime: '2024-04-07 09:05:00',
+                            result: '无变更' 
+                        } 
+                    ] 
+                },
+            ],
+            'conn-3': [
+                { 
+                    count: 1, 
+                    trigger: '定时', 
+                    status: '失败', 
+                    log: '连接失败', 
+                    details: [ 
+                        { 
+                            id: 'table4', 
+                            name: '数据连接C-表4', 
+                            database: 'demo2',
+                            physicalTable: 'table4',
+                            endTime: '2024-04-06 14:30:00',
+                            result: '采集失败' 
+                        } 
+                    ] 
+                },
+            ],
+            'conn-4': [
+                { 
+                    count: 1, 
+                    trigger: '手动', 
+                    status: '成功', 
+                    log: '完成1张表采集', 
+                    details: [ 
+                        { 
+                            id: 'table5', 
+                            name: '数据连接D-表5', 
+                            database: 'demo3',
+                            physicalTable: 'table5',
+                            endTime: '2024-04-05 16:20:00',
+                            result: '有变更' 
+                        } 
+                    ] 
+                },
+            ],
+            'conn-5': [
+                { 
+                    count: 1, 
+                    trigger: '定时', 
+                    status: '成功', 
+                    log: '完成1张表采集', 
+                    details: [ 
+                        { 
+                            id: 'table6', 
+                            name: '数据连接E-表6', 
+                            database: 'demo3',
+                            physicalTable: 'table6',
+                            endTime: '2024-04-04 11:15:00',
+                            result: '无变更' 
+                        } 
+                    ] 
+                },
+            ],
+        };
+
+        // 工具：根据连接显示名映射到connId（用于同步新建表到对应连接）
+        function mapConnectionNameToConnId(connectionName) {
+            // 约定：数据连接 A~E 分别映射 conn-1~conn-5
+            const map = {
+                '数据连接 A': 'conn-1',
+                '数据连接 B': 'conn-2',
+                '数据连接 C': 'conn-3',
+                '数据连接 D': 'conn-4',
+                '数据连接 E': 'conn-5',
+            };
+            return map[connectionName] || 'conn-1';
+        }
+        
+        // 模拟所有表的管理数据 - 统一命名规范
+        const tableManagementData = {
+            root: [
+                { id: "table1", name: "数据连接A-表1", fullName: "数据连接A-表1", directory: "文件夹1", connectionName: "数据连接A", dataSourceType: "MySQL", physicalTable: "user_table", scheduleStatus: "已开启调度", updateTime: "2023-05-15 09:30", lastCollectionResult: "无变更", lastCollectionTime: "2024-04-09 10:45:30" },
+                { id: "table2", name: "数据连接A-表2", fullName: "数据连接A-表2", directory: "文件夹1", connectionName: "数据连接A", dataSourceType: "MySQL", physicalTable: "order_table", scheduleStatus: "未开启调度", updateTime: "2023-05-14 14:20", lastCollectionResult: "有变更", lastCollectionTime: "2024-04-08 12:10:15" },
+                { id: "table3", name: "数据连接A-表3", fullName: "数据连接A-表3", directory: "文件夹1", connectionName: "数据连接A", dataSourceType: "MySQL", physicalTable: "product_table", scheduleStatus: "未加入", updateTime: "2023-05-10 11:45", lastCollectionResult: "无变更", lastCollectionTime: "2024-04-07 09:05:00" },
+                { id: "table7", name: "数据连接A-表7", fullName: "数据连接A-表7", directory: "文件夹1/文件夹3", connectionName: "数据连接A", dataSourceType: "MySQL", physicalTable: "log_table", scheduleStatus: "已开启调度", updateTime: "2023-05-17 08:25", lastCollectionResult: "采集中", lastCollectionTime: "2024-04-10 14:30:00" },
+                { id: "table8", name: "数据连接A-表8", fullName: "数据连接A-表8", directory: "文件夹1/文件夹3", connectionName: "数据连接A", dataSourceType: "MySQL", physicalTable: "config_table", scheduleStatus: "未开启调度", updateTime: "2023-05-16 13:10", lastCollectionResult: "采集失败", lastCollectionTime: "2024-04-09 16:20:00" },
+                { id: "table9", name: "数据连接A-表9", fullName: "数据连接A-表9", directory: "文件夹1/文件夹3", connectionName: "数据连接A", dataSourceType: "MySQL", physicalTable: "session_table", scheduleStatus: "未加入", updateTime: "2023-05-15 16:40", lastCollectionResult: "初始化", lastCollectionTime: "2024-04-08 08:00:00" },
+                { id: "table4", name: "数据连接B-表4", fullName: "数据连接B-表4", directory: "文件夹2", connectionName: "数据连接B", dataSourceType: "PostgreSQL", physicalTable: "backup_user", scheduleStatus: "已开启调度", updateTime: "2023-05-16 16:10", lastCollectionResult: "有变更", lastCollectionTime: "2024-04-09 11:15:30" },
+                { id: "table5", name: "数据连接B-表5", fullName: "数据连接B-表5", directory: "文件夹2", connectionName: "数据连接B", dataSourceType: "PostgreSQL", physicalTable: "backup_order", scheduleStatus: "未开启调度", updateTime: "2023-05-13 10:05", lastCollectionResult: "无变更", lastCollectionTime: "2024-04-08 15:45:20" },
+                { id: "table6", name: "数据连接B-表6", fullName: "数据连接B-表6", directory: "文件夹2", connectionName: "数据连接B", dataSourceType: "PostgreSQL", physicalTable: "backup_product", scheduleStatus: "未加入", updateTime: "2023-05-09 15:50", lastCollectionResult: "有变更", lastCollectionTime: "2024-04-07 13:20:10" }
+            ],
+            folder1: [
+                { id: "table1", name: "数据连接A-表1", fullName: "数据连接A-表1", directory: "文件夹1", connectionName: "数据连接A", dataSourceType: "MySQL", physicalTable: "user_table", scheduleStatus: "已开启调度", updateTime: "2023-05-15 09:30", lastCollectionResult: "无变更", lastCollectionTime: "2024-04-09 10:45:30" },
+                { id: "table2", name: "数据连接A-表2", fullName: "数据连接A-表2", directory: "文件夹1", connectionName: "数据连接A", dataSourceType: "MySQL", physicalTable: "order_table", scheduleStatus: "未开启调度", updateTime: "2023-05-14 14:20", lastCollectionResult: "有变更", lastCollectionTime: "2024-04-08 12:10:15" },
+                { id: "table3", name: "数据连接A-表3", fullName: "数据连接A-表3", directory: "文件夹1", connectionName: "数据连接A", dataSourceType: "MySQL", physicalTable: "product_table", scheduleStatus: "未加入", updateTime: "2023-05-10 11:45", lastCollectionResult: "无变更", lastCollectionTime: "2024-04-07 09:05:00" },
+                { id: "table7", name: "数据连接A-表7", fullName: "数据连接A-表7", directory: "文件夹1/文件夹3", connectionName: "数据连接A", dataSourceType: "MySQL", physicalTable: "log_table", scheduleStatus: "已开启调度", updateTime: "2023-05-17 08:25", lastCollectionResult: "采集中", lastCollectionTime: "2024-04-10 14:30:00" },
+                { id: "table8", name: "数据连接A-表8", fullName: "数据连接A-表8", directory: "文件夹1/文件夹3", connectionName: "数据连接A", dataSourceType: "MySQL", physicalTable: "config_table", scheduleStatus: "未开启调度", updateTime: "2023-05-16 13:10", lastCollectionResult: "采集失败", lastCollectionTime: "2024-04-09 16:20:00" },
+                { id: "table9", name: "数据连接A-表9", fullName: "数据连接A-表9", directory: "文件夹1/文件夹3", connectionName: "数据连接A", dataSourceType: "MySQL", physicalTable: "session_table", scheduleStatus: "未加入", updateTime: "2023-05-15 16:40", lastCollectionResult: "初始化", lastCollectionTime: "2024-04-08 08:00:00" }
+            ],
+            folder2: [
+                { id: "table4", name: "数据连接B-表4", fullName: "数据连接B-表4", directory: "文件夹2", connectionName: "数据连接B", dataSourceType: "PostgreSQL", physicalTable: "backup_user", scheduleStatus: "已开启调度", updateTime: "2023-05-16 16:10", lastCollectionResult: "有变更", lastCollectionTime: "2024-04-09 11:15:30" },
+                { id: "table5", name: "数据连接B-表5", fullName: "数据连接B-表5", directory: "文件夹2", connectionName: "数据连接B", dataSourceType: "PostgreSQL", physicalTable: "backup_order", scheduleStatus: "未开启调度", updateTime: "2023-05-13 10:05", lastCollectionResult: "无变更", lastCollectionTime: "2024-04-08 15:45:20" },
+                { id: "table6", name: "数据连接B-表6", fullName: "数据连接B-表6", directory: "文件夹2", connectionName: "数据连接B", dataSourceType: "PostgreSQL", physicalTable: "backup_product", scheduleStatus: "未加入", updateTime: "2023-05-09 15:50", lastCollectionResult: "有变更", lastCollectionTime: "2024-04-07 13:20:10" }
+            ],
+            folder3: [
+                { id: "table7", name: "数据连接A-表7", fullName: "数据连接A-表7", directory: "文件夹1/文件夹3", connectionName: "数据连接A", dataSourceType: "MySQL", physicalTable: "log_table", scheduleStatus: "已开启调度", updateTime: "2023-05-17 08:25", lastCollectionResult: "采集中", lastCollectionTime: "2024-04-10 14:30:00" },
+                { id: "table8", name: "数据连接A-表8", fullName: "数据连接A-表8", directory: "文件夹1/文件夹3", connectionName: "数据连接A", dataSourceType: "MySQL", physicalTable: "config_table", scheduleStatus: "未开启调度", updateTime: "2023-05-16 13:10", lastCollectionResult: "采集失败", lastCollectionTime: "2024-04-09 16:20:00" },
+                { id: "table9", name: "数据连接A-表9", fullName: "数据连接A-表9", directory: "文件夹1/文件夹3", connectionName: "数据连接A", dataSourceType: "MySQL", physicalTable: "session_table", scheduleStatus: "未加入", updateTime: "2023-05-15 16:40", lastCollectionResult: "初始化", lastCollectionTime: "2024-04-08 08:00:00" }
+            ]
+        };
+        
+        // 修改：模拟表详情数据，更新为新的统一结构
+        const tableDetailData = {
+            table1: {
+                dataPreview: [
+                    { 'order_id': '50001', 'order_no': 'ORD2024040500001', 'user_id': '10001', 'total_amount': '258.90', 'pay_amount': '258.90', 'pay_type': '1', 'order_status': '3', 'pay_time': '2024-04-05 10:05:00', 'ship_time': '2024-04-05 16:30:00', 'finish_time': '2024-04-08 09:20:00', 'create_time': '2024-04-05 09:50:00' },
+                    { 'order_id': '50002', 'order_no': 'ORD2024040600002', 'user_id': '10002', 'total_amount': '899.00', 'pay_amount': '899.00', 'pay_type': '2', 'order_status': '2', 'pay_time': '2024-04-06 14:10:00', 'ship_time': '2024-04-07 10:00:00', 'finish_time': 'NULL', 'create_time': '2024-04-06 14:05:00' },
+                    { 'order_id': '50003', 'order_no': 'ORD2024040700003', 'user_id': '10001', 'total_amount': '59.90', 'pay_amount': '0.00', 'pay_type': 'NULL', 'order_status': '0', 'pay_time': 'NULL', 'ship_time': 'NULL', 'finish_time': 'NULL', 'create_time': '2024-04-07 08:30:00' }
+                ],
+                fieldInfo: [
+                    { '字段名': 'order_id', '数据类型': 'BIGINT', '长度': '20', '主键': '是', '非空': '是', '默认值': 'AUTO_INCREMENT', '字段说明': '订单唯一标识', '约束规则': '自增' },
+                    { '字段名': 'order_no', '数据类型': 'VARCHAR', '长度': '32', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '订单编号', '约束规则': '唯一，规则：ORD+日期+6位随机数' },
+                    { '字段名': 'user_id', '数据类型': 'BIGINT', '长度': '20', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '下单用户ID', '约束规则': '关联t_user表' },
+                    { '字段名': 'total_amount', '数据类型': 'DECIMAL', '长度': '10,2', '主键': '否', '非空': '是', '默认值': '0.00', '字段说明': '订单总金额', '约束规则': '大于0' },
+                    { '字段名': 'pay_amount', '数据类型': 'DECIMAL', '长度': '10,2', '主键': '否', '非空': '是', '默认值': '0.00', '字段说明': '实付金额', '约束规则': '大于等于0' },
+                    { '字段名': 'pay_type', '数据类型': 'TINYINT', '长度': '1', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '支付方式', '约束规则': '1-微信，2-支付宝，3-银行卡' },
+                    { '字段名': 'order_status', '数据类型': 'TINYINT', '长度': '1', '主键': '否', '非空': '是', '默认值': '0', '字段说明': '订单状态', '约束规则': '0-待支付，1-已支付，2-已发货，3-已完成，4-已取消' },
+                    { '字段名': 'pay_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '支付时间', '约束规则': '' },
+                    { '字段名': 'ship_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '发货时间', '约束规则': '' },
+                    { '字段名': 'finish_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '完成时间', '约束规则': '' },
+                    { '字段名': 'create_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP', '字段说明': '创建时间', '约束规则': '' },
+                    { '字段名': 'update_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', '字段说明': '更新时间', '约束规则': '' }
+                ],
+                metadataLogs: [
+                    { 
+                        id: 'log-5003', 
+                        triggerType: '采集计划-定时调度',
+                        result: '无变更',
+                        endTime: '2024-04-09 10:45:30',
+                        runStatus: '成功',
+                        logContent: `2024-04-09 10:45:00 开始采集任务
+2024-04-09 10:45:02 连接数据源成功
+2024-04-09 10:45:05 开始读取表结构
+2024-04-09 10:45:10 表结构比对完成，无变更
+2024-04-09 10:45:15 元数据更新成功
+2024-04-09 10:45:16 采集任务完成`
+                    },
+                    { 
+                        id: 'log-5002', 
+                        triggerType: '采集计划-手动触发',
+                        result: '有变更',
+                        endTime: '2024-04-08 12:10:15',
+                        runStatus: '成功',
+                        logContent: `2024-04-08 12:10:00 开始采集任务
+2024-04-08 12:10:02 连接数据源成功
+2024-04-08 12:10:05 开始读取表结构
+2024-04-08 12:10:10 表结构比对完成，发现3处变更
+2024-04-08 12:10:15 元数据更新成功
+2024-04-08 12:10:16 采集任务完成`
+                    },
+                    { 
+                        id: 'log-5001', 
+                        triggerType: '单表手动触发',
+                        result: '无变更',
+                        endTime: '2024-04-07 09:05:00',
+                        runStatus: '成功',
+                        logContent: `2024-04-07 09:05:00 开始采集任务
+2024-04-07 09:05:02 连接数据源成功
+2024-04-07 09:05:05 开始读取表结构
+2024-04-07 09:05:10 表结构比对完成，无变更
+2024-04-07 09:05:15 元数据更新成功
+2024-04-07 09:05:16 采集任务完成`
+                    }
+                ]
+            },
+            // 表2：用户表 - 与表1结构一致，数据有差异
+            table2: {
+                dataPreview: [
+                    { 'user_id': '10001', 'username': 'zhangsan', 'email': 'zhangsan@example.com', 'phone': '13800138001', 'status': '1', 'level': 'VIP', 'register_time': '2024-03-15 09:30:00', 'last_login': '2024-04-08 14:20:00', 'create_time': '2024-03-15 09:30:00' },
+                    { 'user_id': '10002', 'username': 'lisi', 'email': 'lisi@example.com', 'phone': '13800138002', 'status': '1', 'level': '普通', 'register_time': '2024-03-20 16:45:00', 'last_login': '2024-04-07 11:15:00', 'create_time': '2024-03-20 16:45:00' },
+                    { 'user_id': '10003', 'username': 'wangwu', 'email': 'wangwu@example.com', 'phone': '13800138003', 'status': '0', 'level': '普通', 'register_time': '2024-04-01 08:20:00', 'last_login': 'NULL', 'create_time': '2024-04-01 08:20:00' }
+                ],
+                fieldInfo: [
+                    { '字段名': 'user_id', '数据类型': 'BIGINT', '长度': '20', '主键': '是', '非空': '是', '默认值': 'AUTO_INCREMENT', '字段说明': '用户唯一标识', '约束规则': '自增' },
+                    { '字段名': 'username', '数据类型': 'VARCHAR', '长度': '50', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '用户名', '约束规则': '唯一，3-20个字符' },
+                    { '字段名': 'email', '数据类型': 'VARCHAR', '长度': '100', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '邮箱地址', '约束规则': '唯一，邮箱格式' },
+                    { '字段名': 'phone', '数据类型': 'VARCHAR', '长度': '11', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '手机号码', '约束规则': '唯一，11位数字' },
+                    { '字段名': 'status', '数据类型': 'TINYINT', '长度': '1', '主键': '否', '非空': '是', '默认值': '1', '字段说明': '用户状态', '约束规则': '0-禁用，1-启用' },
+                    { '字段名': 'level', '数据类型': 'VARCHAR', '长度': '20', '主键': '否', '非空': '是', '默认值': '普通', '字段说明': '用户等级', '约束规则': '普通、VIP、SVIP' },
+                    { '字段名': 'register_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP', '字段说明': '注册时间', '约束规则': '' },
+                    { '字段名': 'last_login', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '最后登录时间', '约束规则': '' },
+                    { '字段名': 'create_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP', '字段说明': '创建时间', '约束规则': '' },
+                    { '字段名': 'update_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', '字段说明': '更新时间', '约束规则': '' }
+                ],
+                metadataLogs: []
+            },
+            // 表3：商品表 - 与表1结构一致，数据有差异
+            table3: {
+                dataPreview: [
+                    { 'product_id': '20001', 'product_code': 'PROD2024001', 'product_name': '智能手机', 'category_id': '3001', 'price': '2999.00', 'stock': '100', 'status': '1', 'publish_time': '2024-03-10 10:00:00', 'create_time': '2024-03-10 10:00:00' },
+                    { 'product_id': '20002', 'product_code': 'PROD2024002', 'product_name': '笔记本电脑', 'category_id': '3002', 'price': '5999.00', 'stock': '50', 'status': '1', 'publish_time': '2024-03-15 14:30:00', 'create_time': '2024-03-15 14:30:00' },
+                    { 'product_id': '20003', 'product_code': 'PROD2024003', 'product_name': '无线耳机', 'category_id': '3003', 'price': '299.00', 'stock': '200', 'status': '0', 'publish_time': '2024-04-01 09:15:00', 'create_time': '2024-04-01 09:15:00' }
+                ],
+                fieldInfo: [
+                    { '字段名': 'product_id', '数据类型': 'BIGINT', '长度': '20', '主键': '是', '非空': '是', '默认值': 'AUTO_INCREMENT', '字段说明': '商品唯一标识', '约束规则': '自增' },
+                    { '字段名': 'product_code', '数据类型': 'VARCHAR', '长度': '32', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '商品编码', '约束规则': '唯一，规则：PROD+日期+3位随机数' },
+                    { '字段名': 'product_name', '数据类型': 'VARCHAR', '长度': '100', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '商品名称', '约束规则': '1-100个字符' },
+                    { '字段名': 'category_id', '数据类型': 'BIGINT', '长度': '20', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '商品分类ID', '约束规则': '关联t_category表' },
+                    { '字段名': 'price', '数据类型': 'DECIMAL', '长度': '10,2', '主键': '否', '非空': '是', '默认值': '0.00', '字段说明': '商品价格', '约束规则': '大于等于0' },
+                    { '字段名': 'stock', '数据类型': 'INT', '长度': '11', '主键': '否', '非空': '是', '默认值': '0', '字段说明': '库存数量', '约束规则': '大于等于0' },
+                    { '字段名': 'status', '数据类型': 'TINYINT', '长度': '1', '主键': '否', '非空': '是', '默认值': '1', '字段说明': '商品状态', '约束规则': '0-下架，1-上架' },
+                    { '字段名': 'publish_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '发布时间', '约束规则': '' },
+                    { '字段名': 'create_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP', '字段说明': '创建时间', '约束规则': '' },
+                    { '字段名': 'update_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', '字段说明': '更新时间', '约束规则': '' }
+                ],
+                metadataLogs: []
+            },
+            // 表4：库存表 - 与表1结构一致，数据有差异
+            table4: {
+                dataPreview: [
+                    { 'inventory_id': '40001', 'warehouse_code': 'WH001', 'product_id': '20001', 'quantity': '150', 'reserved_qty': '50', 'available_qty': '100', 'status': '1', 'last_check': '2024-04-08 16:30:00', 'create_time': '2024-03-01 09:00:00' },
+                    { 'inventory_id': '40002', 'warehouse_code': 'WH002', 'product_id': '20002', 'quantity': '80', 'reserved_qty': '30', 'available_qty': '50', 'status': '1', 'last_check': '2024-04-07 14:20:00', 'create_time': '2024-03-05 10:30:00' },
+                    { 'inventory_id': '40003', 'warehouse_code': 'WH001', 'product_id': '20003', 'quantity': '0', 'reserved_qty': '0', 'available_qty': '0', 'status': '0', 'last_check': '2024-04-06 11:45:00', 'create_time': '2024-03-10 15:15:00' }
+                ],
+                fieldInfo: [
+                    { '字段名': 'inventory_id', '数据类型': 'BIGINT', '长度': '20', '主键': '是', '非空': '是', '默认值': 'AUTO_INCREMENT', '字段说明': '库存记录唯一标识', '约束规则': '自增' },
+                    { '字段名': 'warehouse_code', '数据类型': 'VARCHAR', '长度': '20', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '仓库编码', '约束规则': '关联t_warehouse表' },
+                    { '字段名': 'product_id', '数据类型': 'BIGINT', '长度': '20', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '商品ID', '约束规则': '关联t_product表' },
+                    { '字段名': 'quantity', '数据类型': 'INT', '长度': '11', '主键': '否', '非空': '是', '默认值': '0', '字段说明': '总库存数量', '约束规则': '大于等于0' },
+                    { '字段名': 'reserved_qty', '数据类型': 'INT', '长度': '11', '主键': '否', '非空': '是', '默认值': '0', '字段说明': '预留数量', '约束规则': '大于等于0' },
+                    { '字段名': 'available_qty', '数据类型': 'INT', '长度': '11', '主键': '否', '非空': '是', '默认值': '0', '字段说明': '可用数量', '约束规则': 'quantity - reserved_qty' },
+                    { '字段名': 'status', '数据类型': 'TINYINT', '长度': '1', '主键': '否', '非空': '是', '默认值': '1', '字段说明': '库存状态', '约束规则': '0-停用，1-启用' },
+                    { '字段名': 'last_check', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '最后盘点时间', '约束规则': '' },
+                    { '字段名': 'create_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP', '字段说明': '创建时间', '约束规则': '' },
+                    { '字段名': 'update_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', '字段说明': '更新时间', '约束规则': '' }
+                ],
+                metadataLogs: []
+            },
+            // 表5：发货表 - 与表1结构一致，数据有差异
+            table5: {
+                dataPreview: [
+                    { 'ship_id': '50001', 'order_id': '50001', 'tracking_no': 'SF1234567890', 'carrier': '顺丰', 'status': '2', 'ship_time': '2024-04-05 16:30:00', 'delivery_time': '2024-04-07 14:20:00', 'create_time': '2024-04-05 16:30:00' },
+                    { 'ship_id': '50002', 'order_id': '50002', 'tracking_no': 'YT0987654321', 'carrier': '圆通', 'status': '1', 'ship_time': '2024-04-07 10:00:00', 'delivery_time': 'NULL', 'create_time': '2024-04-07 10:00:00' },
+                    { 'ship_id': '50003', 'order_id': '50003', 'tracking_no': 'ZTO1122334455', 'carrier': '中通', 'status': '0', 'ship_time': 'NULL', 'delivery_time': 'NULL', 'create_time': '2024-04-08 09:15:00' }
+                ],
+                fieldInfo: [
+                    { '字段名': 'ship_id', '数据类型': 'BIGINT', '长度': '20', '主键': '是', '非空': '是', '默认值': 'AUTO_INCREMENT', '字段说明': '发货记录唯一标识', '约束规则': '自增' },
+                    { '字段名': 'order_id', '数据类型': 'BIGINT', '长度': '20', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '关联订单ID', '约束规则': '关联t_order表' },
+                    { '字段名': 'tracking_no', '数据类型': 'VARCHAR', '长度': '50', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '物流单号', '约束规则': '唯一，10-50个字符' },
+                    { '字段名': 'carrier', '数据类型': 'VARCHAR', '长度': '20', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '承运商', '约束规则': '顺丰、圆通、中通、申通' },
+                    { '字段名': 'status', '数据类型': 'TINYINT', '长度': '1', '主键': '否', '非空': '是', '默认值': '0', '字段说明': '发货状态', '约束规则': '0-待发货，1-已发货，2-已送达' },
+                    { '字段名': 'ship_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '发货时间', '约束规则': '' },
+                    { '字段名': 'delivery_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '送达时间', '约束规则': '' },
+                    { '字段名': 'create_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP', '字段说明': '创建时间', '约束规则': '' },
+                    { '字段名': 'update_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', '字段说明': '更新时间', '约束规则': '' }
+                ],
+                metadataLogs: []
+            },
+            // 表6：分类表 - 与表1结构一致，数据有差异
+            table6: {
+                dataPreview: [
+                    { 'category_id': '3001', 'category_name': '电子产品', 'parent_id': 'NULL', 'level': '1', 'sort_order': '1', 'status': '1', 'description': '各类电子设备', 'create_time': '2024-01-01 00:00:00' },
+                    { 'category_id': '3002', 'category_name': '手机配件', 'parent_id': '3001', 'level': '2', 'sort_order': '1', 'status': '1', 'description': '手机相关配件', 'create_time': '2024-01-01 00:00:00' },
+                    { 'category_id': '3003', 'category_name': '电脑配件', 'parent_id': '3001', 'level': '2', 'sort_order': '2', 'status': '1', 'description': '电脑相关配件', 'create_time': '2024-01-01 00:00:00' }
+                ],
+                fieldInfo: [
+                    { '字段名': 'category_id', '数据类型': 'BIGINT', '长度': '20', '主键': '是', '非空': '是', '默认值': 'AUTO_INCREMENT', '字段说明': '分类唯一标识', '约束规则': '自增' },
+                    { '字段名': 'category_name', '数据类型': 'VARCHAR', '长度': '50', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '分类名称', '约束规则': '1-50个字符' },
+                    { '字段名': 'parent_id', '数据类型': 'BIGINT', '长度': '20', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '父分类ID', '约束规则': '关联本表category_id' },
+                    { '字段名': 'level', '数据类型': 'TINYINT', '长度': '2', '主键': '否', '非空': '是', '默认值': '1', '字段说明': '分类层级', '约束规则': '1-5级' },
+                    { '字段名': 'sort_order', '数据类型': 'INT', '长度': '11', '主键': '否', '非空': '是', '默认值': '0', '字段说明': '排序序号', '约束规则': '数字越大越靠前' },
+                    { '字段名': 'status', '数据类型': 'TINYINT', '长度': '1', '主键': '否', '非空': '是', '默认值': '1', '字段说明': '分类状态', '约束规则': '0-禁用，1-启用' },
+                    { '字段名': 'description', '数据类型': 'TEXT', '长度': '-', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '分类描述', '约束规则': '最多1000字符' },
+                    { '字段名': 'create_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP', '字段说明': '创建时间', '约束规则': '' },
+                    { '字段名': 'update_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', '字段说明': '更新时间', '约束规则': '' }
+                ],
+                metadataLogs: []
+            },
+            // 表7：支付表 - 与表1结构一致，数据有差异
+            table7: {
+                dataPreview: [
+                    { 'payment_id': '70001', 'order_id': '50001', 'payment_method': '1', 'amount': '258.90', 'transaction_id': 'TXN2024040500001', 'status': '2', 'pay_time': '2024-04-05 10:05:00', 'create_time': '2024-04-05 10:05:00' },
+                    { 'payment_id': '70002', 'order_id': '50002', 'payment_method': '2', 'amount': '899.00', 'transaction_id': 'TXN2024040600002', 'status': '2', 'pay_time': '2024-04-06 14:10:00', 'create_time': '2024-04-06 14:10:00' },
+                    { 'payment_id': '70003', 'order_id': '50003', 'payment_method': 'NULL', 'amount': '59.90', 'transaction_id': 'NULL', 'status': '0', 'pay_time': 'NULL', 'create_time': '2024-04-07 08:30:00' }
+                ],
+                fieldInfo: [
+                    { '字段名': 'payment_id', '数据类型': 'BIGINT', '长度': '20', '主键': '是', '非空': '是', '默认值': 'AUTO_INCREMENT', '字段说明': '支付记录唯一标识', '约束规则': '自增' },
+                    { '字段名': 'order_id', '数据类型': 'BIGINT', '长度': '20', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '关联订单ID', '约束规则': '关联t_order表' },
+                    { '字段名': 'payment_method', '数据类型': 'TINYINT', '长度': '1', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '支付方式', '约束规则': '1-微信，2-支付宝，3-银行卡' },
+                    { '字段名': 'amount', '数据类型': 'DECIMAL', '长度': '10,2', '主键': '否', '非空': '是', '默认值': '0.00', '字段说明': '支付金额', '约束规则': '大于0' },
+                    { '字段名': 'transaction_id', '数据类型': 'VARCHAR', '长度': '50', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '第三方交易号', '约束规则': '唯一，20-50个字符' },
+                    { '字段名': 'status', '数据类型': 'TINYINT', '长度': '1', '主键': '否', '非空': '是', '默认值': '0', '字段说明': '支付状态', '约束规则': '0-待支付，1-支付中，2-支付成功，3-支付失败' },
+                    { '字段名': 'pay_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '支付时间', '约束规则': '' },
+                    { '字段名': 'create_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP', '字段说明': '创建时间', '约束规则': '' },
+                    { '字段名': 'update_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', '字段说明': '更新时间', '约束规则': '' }
+                ],
+                metadataLogs: []
+            },
+            // 表8：地址表 - 与表1结构一致，数据有差异
+            table8: {
+                dataPreview: [
+                    { 'address_id': '80001', 'user_id': '10001', 'receiver_name': '张三', 'phone': '13800138001', 'province': '北京市', 'city': '北京市', 'district': '朝阳区', 'detail_address': '建国路88号', 'is_default': '1', 'create_time': '2024-03-15 09:30:00' },
+                    { 'address_id': '80002', 'user_id': '10002', 'receiver_name': '李四', 'phone': '13800138002', 'province': '上海市', 'city': '上海市', 'district': '浦东新区', 'detail_address': '陆家嘴金融中心', 'is_default': '1', 'create_time': '2024-03-20 16:45:00' },
+                    { 'address_id': '80003', 'user_id': '10001', 'receiver_name': '张三', 'phone': '13800138001', 'province': '广东省', 'city': '深圳市', 'district': '南山区', 'detail_address': '科技园南区', 'is_default': '0', 'create_time': '2024-04-01 08:20:00' }
+                ],
+                fieldInfo: [
+                    { '字段名': 'address_id', '数据类型': 'BIGINT', '长度': '20', '主键': '是', '非空': '是', '默认值': 'AUTO_INCREMENT', '字段说明': '地址唯一标识', '约束规则': '自增' },
+                    { '字段名': 'user_id', '数据类型': 'BIGINT', '长度': '20', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '用户ID', '约束规则': '关联t_user表' },
+                    { '字段名': 'receiver_name', '数据类型': 'VARCHAR', '长度': '50', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '收货人姓名', '约束规则': '1-50个字符' },
+                    { '字段名': 'phone', '数据类型': 'VARCHAR', '长度': '11', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '收货人电话', '约束规则': '11位数字' },
+                    { '字段名': 'province', '数据类型': 'VARCHAR', '长度': '20', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '省份', '约束规则': '1-20个字符' },
+                    { '字段名': 'city', '数据类型': 'VARCHAR', '长度': '20', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '城市', '约束规则': '1-20个字符' },
+                    { '字段名': 'district', '数据类型': 'VARCHAR', '长度': '20', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '区县', '约束规则': '1-20个字符' },
+                    { '字段名': 'detail_address', '数据类型': 'VARCHAR', '长度': '200', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '详细地址', '约束规则': '1-200个字符' },
+                    { '字段名': 'is_default', '数据类型': 'TINYINT', '长度': '1', '主键': '否', '非空': '是', '默认值': '0', '字段说明': '是否默认地址', '约束规则': '0-否，1-是' },
+                    { '字段名': 'create_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP', '字段说明': '创建时间', '约束规则': '' },
+                    { '字段名': 'update_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', '字段说明': '更新时间', '约束规则': '' }
+                ],
+                metadataLogs: []
+            },
+            // 表9：日志表 - 与表1结构一致，数据有差异
+            table9: {
+                dataPreview: [
+                    { 'log_id': '90001', 'user_id': '10001', 'action': 'login', 'module': 'user', 'ip_address': '192.168.1.100', 'user_agent': 'Mozilla/5.0', 'status': '1', 'message': '用户登录成功', 'create_time': '2024-04-08 14:20:00' },
+                    { 'log_id': '90002', 'user_id': '10002', 'action': 'order_create', 'module': 'order', 'ip_address': '192.168.1.101', 'user_agent': 'Mozilla/5.0', 'status': '1', 'message': '创建订单成功', 'create_time': '2024-04-08 15:30:00' },
+                    { 'log_id': '90003', 'user_id': 'NULL', 'action': 'error', 'module': 'system', 'ip_address': '192.168.1.102', 'user_agent': 'Mozilla/5.0', 'status': '0', 'message': '系统异常', 'create_time': '2024-04-08 16:45:00' }
+                ],
+                fieldInfo: [
+                    { '字段名': 'log_id', '数据类型': 'BIGINT', '长度': '20', '主键': '是', '非空': '是', '默认值': 'AUTO_INCREMENT', '字段说明': '日志唯一标识', '约束规则': '自增' },
+                    { '字段名': 'user_id', '数据类型': 'BIGINT', '长度': '20', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '操作用户ID', '约束规则': '关联t_user表' },
+                    { '字段名': 'action', '数据类型': 'VARCHAR', '长度': '50', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '操作动作', '约束规则': 'login、logout、create、update、delete' },
+                    { '字段名': 'module', '数据类型': 'VARCHAR', '长度': '30', '主键': '否', '非空': '是', '默认值': '无', '字段说明': '操作模块', '约束规则': 'user、order、product、system' },
+                    { '字段名': 'ip_address', '数据类型': 'VARCHAR', '长度': '45', '主键': '否', '非空': '是', '默认值': '无', '字段说明': 'IP地址', '约束规则': 'IPv4或IPv6格式' },
+                    { '字段名': 'user_agent', '数据类型': 'TEXT', '长度': '-', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '用户代理', '约束规则': '浏览器信息' },
+                    { '字段名': 'status', '数据类型': 'TINYINT', '长度': '1', '主键': '否', '非空': '是', '默认值': '1', '字段说明': '操作状态', '约束规则': '0-失败，1-成功' },
+                    { '字段名': 'message', '数据类型': 'TEXT', '长度': '-', '主键': '否', '非空': '否', '默认值': 'NULL', '字段说明': '操作描述', '约束规则': '最多1000字符' },
+                    { '字段名': 'create_time', '数据类型': 'DATETIME', '长度': '-', '主键': '否', '非空': '是', '默认值': 'CURRENT_TIMESTAMP', '字段说明': '创建时间', '约束规则': '' }
+                ],
+                metadataLogs: []
+            },
+        };
+        
+        // 修改2: 更新物理表数据结构
+        const physicalTableData = [
+            {
+                id: 'physical-folder-demo1',
+                name: 'demo1',
+                children: [
+                    { id: 'physical-table1', name: 'table1' },
+                    { id: 'physical-table2', name: 'table2' },
+                    { id: 'physical-table3', name: 'table3' },
+                ]
+            },
+            {
+                id: 'physical-folder-demo2',
+                name: 'demo2',
+                children: [
+                    { id: 'physical-table4', name: 'table4' },
+                    { id: 'physical-table5', name: 'table5' },
+                ]
+            },
+            {
+                id: 'physical-folder-demo3',
+                name: 'demo3',
+                children: [
+                    { id: 'physical-table6', name: 'table6' },
+                    { id: 'physical-table7', name: 'table7' },
+                ]
+            }
+        ];
+        
+        // 状态变量
+        let currentDirectoryId = 'root'; // 当前选中的文件夹/根目录ID
+        let lastDirectoryId = 'root'; // 上次离开表管理时选中的目录ID
+        // 采集计划管理：元素引用（稍后在DOMContentLoaded中赋值）
+        let planOverlay, planConnList, planBasicInfo, planSchedule, segTableBtn, segRunsBtn, planSegContainer, runDetailModal, runDetailClose, runDetailOk, runDetailContent;
+        
+        // 搜索功能相关变量
+        let searchInput, searchIcon, clearIcon;
+        let isSearching = false; // 是否正在搜索状态
+        let originalTreeState = {}; // 保存原始目录树状态
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            selectItem('root', 'directory');
+            updateBreadcrumb('root'); // 初始化面包屑
+            updateTableManagementContent('root'); // 初始加载根目录的表格数据
+            
+            // 为文件夹切换图标添加点击事件
+            document.querySelectorAll('.toggle-btn').forEach(toggle => {
+                toggle.addEventListener('click', function(e) {
+                    e.stopPropagation(); // 阻止事件冒泡
+                    toggleFolder(this);
+                });
+            });
+            
+            // 为文件夹添加点击事件
+            document.querySelectorAll('[data-type="folder"]').forEach(folder => {
+                folder.addEventListener('click', function() {
+                    const folderId = this.getAttribute('data-id');
+                    const toggleBtn = this.querySelector('.toggle-btn i');
+                    
+                    // 如果文件夹是收起状态，则展开它
+                    if (toggleBtn.classList.contains('fa-chevron-right')) {
+                        toggleFolder(this.querySelector('.toggle-btn'));
+                    }
+                    
+                    // 选中文件夹
+                    selectItem(folderId, 'folder');
+                    switchToTableManagementTab();
+                });
+            });
+            
+            // 为根目录添加点击事件
+            document.getElementById('root-directory').addEventListener('click', function() {
+                selectItem('root', 'directory');
+                switchToTableManagementTab();
+            });
+            
+            // 为采集计划管理入口添加点击事件（兼容：若存在侧边入口）
+            const planEntryEl = document.getElementById('plan-management-entry');
+            if (planEntryEl) {
+                planEntryEl.addEventListener('click', function() {
+                    selectItem('plan-management', 'plan');
+                    openPlanManagementTab();
+                });
+            }
+            
+            // 为表添加点击事件
+            document.querySelectorAll('[data-type="table"]').forEach(table => {
+                table.addEventListener('click', function() {
+                    const tableId = this.getAttribute('data-id');
+                    const tableName = this.querySelector('span').textContent;
+                    // 记录当前目录ID，以便返回表管理时使用
+                    lastDirectoryId = currentDirectoryId;
+                    selectItem(tableId, 'table');
+                    openTableTab(tableId, tableName);
+                });
+            });
+            
+            // 为表管理标签添加点击事件
+            document.querySelector('[data-tab="table-management"]').addEventListener('click', function() {
+                switchToTableManagementTab();
+                // 切换回上次离开表管理时选中的目录
+                selectItem(lastDirectoryId, lastDirectoryId === 'root' ? 'directory' : 'folder');
+            });
+
+            // 新增交互逻辑
+            const newBtn = document.getElementById('new-btn');
+            const newMenu = document.getElementById('new-menu');
+            const newTableMenu = document.getElementById('new-table-menu');
+            const newTableModal = document.getElementById('new-table-modal');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const cancelBtn = document.getElementById('cancel-btn');
+            const generateBtn = document.getElementById('generate-btn');
+            const physicalTableList = document.getElementById('physical-table-list');
+            const openPlanBtn = document.getElementById('open-plan-btn');
+            planOverlay = document.getElementById('plan-overlay');
+            const planBackBtn = document.getElementById('plan-back-btn');
+            
+            // 搜索功能元素引用
+            searchInput = document.getElementById('search-input');
+            searchIcon = document.getElementById('search-icon');
+            clearIcon = document.getElementById('clear-icon');
+            // 采集计划管理：元素引用（提升为外层变量，供各函数使用）
+            planConnList = document.getElementById('plan-conn-list');
+            planBasicInfo = document.getElementById('plan-basic-info');
+            planSchedule = document.getElementById('plan-schedule');
+            segTableBtn = document.getElementById('seg-table');
+            segRunsBtn = document.getElementById('seg-runs');
+            planSegContainer = document.getElementById('plan-seg-container');
+            runDetailModal = document.getElementById('run-detail-modal');
+            runDetailClose = document.getElementById('run-detail-close');
+            runDetailOk = document.getElementById('run-detail-ok');
+            runDetailContent = document.getElementById('run-detail-content');
+            
+            // 点击“新建”按钮显示菜单
+            newBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                newMenu.classList.toggle('hidden');
+            });
+
+            // 打开采集计划管理全屏覆盖
+            openPlanBtn.addEventListener('click', function() {
+                planOverlay.classList.remove('hidden');
+                // 默认初始化并选中第一个数据连接
+                renderPlanConnections();
+                selectPlanConnection(planConnections[0].id);
+            });
+
+            // 返回关闭覆盖页
+            planBackBtn.addEventListener('click', function() {
+                planOverlay.classList.add('hidden');
+            });
+
+            // 运行详情弹窗关闭
+            runDetailClose.addEventListener('click', function() { runDetailModal.classList.add('hidden'); });
+            runDetailOk.addEventListener('click', function() { runDetailModal.classList.add('hidden'); });
+
+            // 运行日志弹窗关闭
+            const runLogModal = document.getElementById('run-log-modal');
+            const runLogClose = document.getElementById('run-log-close');
+            const runLogOk = document.getElementById('run-log-ok');
+            runLogClose.addEventListener('click', function() { runLogModal.classList.add('hidden'); });
+            runLogOk.addEventListener('click', function() { runLogModal.classList.add('hidden'); });
+
+            // 元数据采集记录日志弹窗关闭
+            const metadataLogModal = document.getElementById('metadata-log-modal');
+            const metadataLogClose = document.getElementById('metadata-log-close');
+            const metadataLogOk = document.getElementById('metadata-log-ok');
+            metadataLogClose.addEventListener('click', function() { metadataLogModal.classList.add('hidden'); });
+            metadataLogOk.addEventListener('click', function() { metadataLogModal.classList.add('hidden'); });
+
+            // 删除确认弹窗事件
+            const deleteConfirmationModal = document.getElementById('delete-confirmation-modal');
+            const deleteCancelBtn = document.getElementById('delete-cancel-btn');
+            const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
+            deleteCancelBtn.addEventListener('click', function() { deleteConfirmationModal.classList.add('hidden'); });
+            deleteConfirmBtn.addEventListener('click', function() { 
+                const tableId = deleteConfirmBtn.getAttribute('data-table-id');
+                const tableName = deleteConfirmBtn.getAttribute('data-table-name');
+                deleteLogicalTable(tableId, tableName);
+                deleteConfirmationModal.classList.add('hidden');
+            });
+
+            // Segment 切换
+            segTableBtn.addEventListener('click', function() {
+                segTableBtn.classList.add('bg-active');
+                segRunsBtn.classList.remove('bg-active');
+                const current = getCurrentPlanConnection();
+                renderPlanSegmentTables(current);
+            });
+            segRunsBtn.addEventListener('click', function() {
+                segRunsBtn.classList.add('bg-active');
+                segTableBtn.classList.remove('bg-active');
+                const current = getCurrentPlanConnection();
+                renderPlanSegmentRuns(current);
+            });
+
+            // 点击页面其他地方关闭菜单
+            document.addEventListener('click', function(e) {
+                if (!newBtn.contains(e.target) && !newMenu.contains(e.target)) {
+                    newMenu.classList.add('hidden');
+                }
+            });
+
+            // 点击"新建逻辑表"菜单项，打开弹窗并渲染物理表列表
+            newTableMenu.addEventListener('click', function(e) {
+                e.preventDefault();
+                newMenu.classList.add('hidden');
+                openModal();
+            });
+
+            // 采集方式切换事件监听
+            document.querySelectorAll('input[name="creation-method"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    toggleCollectionMethod(this.value);
+                });
+            });
+
+            // 关闭弹窗按钮
+            closeModalBtn.addEventListener('click', closeModal);
+            cancelBtn.addEventListener('click', closeModal);
+
+            // 点击生成按钮
+            generateBtn.addEventListener('click', function() {
+                if (validateForm()) {
+                    generateLogicalTables();
+                    closeModal();
+                }
+            });
+
+            // SQL语句输入框事件监听
+            const sqlStatement = document.getElementById('sql-statement');
+            if (sqlStatement) {
+                sqlStatement.addEventListener('input', function() {
+                    updateGenerateButtonState();
+                });
+            }
+
+            // 渲染目录下拉框和物理表列表
+            renderDirectorySelect();
+            renderPhysicalTableList();
+            
+            // 添加物理表列表的展开/折叠事件监听器
+            physicalTableList.addEventListener('click', function(e) {
+                const toggleBtn = e.target.closest('.toggle-btn');
+                if (toggleBtn) {
+                    togglePhysicalFolder(toggleBtn);
+                }
+            });
+
+            // 搜索功能事件监听器
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.trim();
+                if (searchTerm) {
+                    performSearch(searchTerm);
+                    searchIcon.classList.add('hidden');
+                    clearIcon.classList.remove('hidden');
+                } else {
+                    clearSearch();
+                }
+            });
+
+            searchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const searchTerm = this.value.trim();
+                    if (searchTerm) {
+                        performSearch(searchTerm);
+                    }
+                } else if (e.key === 'Escape') {
+                    clearSearch();
+                }
+            });
+
+            clearIcon.addEventListener('click', function() {
+                clearSearch();
+            });
+
+            // 保存原始目录树状态
+            saveOriginalTreeState();
+
+        });
+        
+        // 切换文件夹展开/收起状态
+        function toggleFolder(toggleElement) {
+            const folderElement = toggleElement.closest('[data-type="folder"]');
+            const folderId = folderElement.getAttribute('data-id');
+            const targetContent = document.getElementById(`${folderId}-content`);
+            const icon = toggleElement.querySelector('i');
+            
+            // 切换内容显示状态
+            targetContent.classList.toggle('hidden');
+            
+            // 切换图标
+            if (targetContent.classList.contains('hidden')) {
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-right');
+            } else {
+                icon.classList.remove('fa-chevron-right');
+                icon.classList.add('fa-chevron-down');
+            }
+        }
+        
+        // 更新面包屑导航
+        function updateBreadcrumb(directoryId) {
+            const breadcrumbElement = document.getElementById('breadcrumb');
+            let breadcrumbHtml = '';
+            
+            // 构建面包屑路径
+            if (directoryId === 'root') {
+                // 根目录面包屑
+                breadcrumbHtml = `
+                    <span class="breadcrumb-item-current">${directoryNames[directoryId]}</span>
+                `;
+            } else if (directoryId === 'folder3') {
+                // 文件夹3的面包屑（根目录 -> 文件夹1 -> 文件夹3）
+                breadcrumbHtml = `
+                    <span class="breadcrumb-item" data-id="root">${directoryNames.root}</span>
+                    <span class="breadcrumb-separator">/</span>
+                    <span class="breadcrumb-item" data-id="folder1">${directoryNames.folder1}</span>
+                    <span class="breadcrumb-separator">/</span>
+                    <span class="breadcrumb-item-current">${directoryNames[directoryId]}</span>
+                `;
+            } else {
+                // 其他文件夹面包屑（根目录 -> 文件夹）
+                breadcrumbHtml = `
+                    <span class="breadcrumb-item" data-id="root">${directoryNames.root}</span>
+                    <span class="breadcrumb-separator">/</span>
+                    <span class="breadcrumb-item-current">${directoryNames[directoryId]}</span>
+                `;
+            }
+            
+            breadcrumbElement.innerHTML = breadcrumbHtml;
+            
+            // 为面包屑项添加点击事件
+            document.querySelectorAll('.breadcrumb-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const dirId = this.getAttribute('data-id');
+                    selectItem(dirId, dirId === 'root' ? 'directory' : 'folder');
+                    switchToTableManagementTab();
+                });
+            });
+        }
+        
+        // 选择目录树中的项目（文件夹、根目录或表）
+        function selectItem(itemId, itemType) {
+            // 移除所有项目的活跃状态
+            document.querySelectorAll('[data-type="folder"], [data-type="directory"], [data-type="table"], [data-type="plan"]').forEach(item => {
+                item.classList.remove('item-active');
+            });
+            
+            // 添加当前选中项的样式
+            let itemElement;
+            if (itemType === 'directory' && itemId === 'root') {
+                itemElement = document.getElementById('root-directory');
+            } else {
+                itemElement = document.querySelector(`[data-type="${itemType}"][data-id="${itemId}"]`);
+            }
+            
+            if (itemElement) {
+                itemElement.classList.add('item-active');
+                
+                // 更新当前目录ID（仅针对文件夹和根目录）
+                if (itemType === 'folder' || itemType === 'directory') {
+                    currentDirectoryId = itemId;
+                }
+            }
+            
+            // 如果正在搜索状态，清空搜索以显示完整目录树
+            if (isSearching && searchInput && searchInput.value.trim()) {
+                clearSearch();
+            }
+        }
+        
+        // 更新表管理内容 - 生成表格
+        function updateTableManagementContent(directoryId) {
+            const contentElement = document.getElementById('directory-content');
+            const tableData = tableManagementData[directoryId] || [];
+            
+            // 生成表格HTML
+            let tableHtml = `
+                <table class="min-w-full border border-gray-300">
+                    <thead>
+                        <tr class="list-header">
+                            <th class="px-4 py-2 border-b text-left">表名称</th>
+                            <th class="px-4 py-2 border-b text-left">表目录</th>
+                            <th class="px-4 py-2 border-b text-left">数据源类型</th>
+                            <th class="px-4 py-2 border-b text-left">数据连接名称</th>
+                            <th class="px-4 py-2 border-b text-left">物理表</th>
+                            <th class="px-4 py-2 border-b text-left">定时采集计划</th>
+                            <th class="px-4 py-2 border-b text-left">最近更新时间</th>
+                            <th class="px-4 py-2 border-b text-left">最近采集结果</th>
+                            <th class="px-4 py-2 border-b text-left">最近采集时间</th>
+                            <th class="px-4 py-2 border-b text-left">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            // 添加表数据行
+            if (tableData.length > 0) {
+                tableData.forEach(row => {
+                    // 获取采集结果状态样式类
+                    const getCollectionStatusClass = (result) => {
+                        const statusMap = {
+                            '采集中': 'collection-status-collecting',
+                            '无变更': 'collection-status-no-change',
+                            '有变更': 'collection-status-changed',
+                            '采集失败': 'collection-status-failed',
+                            '初始化': 'collection-status-init'
+                        };
+                        return statusMap[result] || 'collection-status-no-change';
+                    };
+                    
+                    // 根据调度状态设置样式
+                    let scheduleStatusClass = '';
+                    switch(row.scheduleStatus) {
+                        case '已开启调度':
+                            scheduleStatusClass = 'text-green-600 font-medium';
+                            break;
+                        case '未开启调度':
+                            scheduleStatusClass = 'text-orange-600 font-medium';
+                            break;
+                        case '未加入':
+                            scheduleStatusClass = 'text-gray-500';
+                            break;
+                    }
+                    
+                    tableHtml += `
+                    <tr class="list-row">
+                        <td class="px-4 py-2 border-b">
+                            <span class="table-cell-hover" data-table-id="${row.id}">${row.name}</span>
+                        </td>
+                        <td class="px-4 py-2 border-b">${row.directory}</td>
+                        <td class="px-4 py-2 border-b">
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                ${row.dataSourceType}
+                            </span>
+                        </td>
+                        <td class="px-4 py-2 border-b">${row.connectionName}</td>
+                        <td class="px-4 py-2 border-b font-mono text-sm">${row.physicalTable}</td>
+                        <td class="px-4 py-2 border-b">
+                            <span class="${scheduleStatusClass}">${row.scheduleStatus}</span>
+                        </td>
+                        <td class="px-4 py-2 border-b">${row.updateTime}</td>
+                        <td class="px-4 py-2 border-b">
+                            <span class="${getCollectionStatusClass(row.lastCollectionResult)}">${row.lastCollectionResult}</span>
+                        </td>
+                        <td class="px-4 py-2 border-b">${row.lastCollectionTime || '未采集'}</td>
+                        <td class="px-4 py-2 border-b">
+                            <div class="relative inline-block">
+                                <button class="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs hover:bg-gray-300 more-actions-btn" 
+                                        data-table-id="${row.id}" data-table-name="${row.name}">⋯</button>
+                                <div class="more-actions-menu absolute right-0 mt-1 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-10 hidden">
+                                    <button class="block w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 action-rename" data-table-id="${row.id}">重命名</button>
+                                    <button class="block w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 action-edit" data-table-id="${row.id}">编辑</button>
+                                    <button class="block w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 action-collect" data-table-id="${row.id}">采集元数据</button>
+                                    <button class="block w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 action-move" data-table-id="${row.id}">移动到</button>
+                                    <hr class="my-1">
+                                    <button class="block w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 action-delete" data-table-id="${row.id}" data-table-name="${row.name}">删除</button>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    `;
+                });
+            } else {
+                tableHtml += `
+                <tr>
+                    <td colspan="10" class="px-4 py-2 text-center text-gray-500">
+                        该目录下没有表
+                    </td>
+                </tr>
+                `;
+            }
+            
+            tableHtml += `
+                    </tbody>
+                </table>
+            `;
+            
+            contentElement.innerHTML = tableHtml;
+            
+            // 为表格中的表名称添加点击事件
+    document.querySelectorAll('.table-cell-hover').forEach(cell => {
+        cell.addEventListener('click', function() {
+            const tableId = this.getAttribute('data-table-id');
+            const tableName = this.textContent;
+            lastDirectoryId = currentDirectoryId;
+            selectItem(tableId, 'table');
+            openTableTab(tableId, tableName);
+        });
+    });
+    
+    // 绑定更多操作按钮事件
+    document.querySelectorAll('.more-actions-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const menu = this.nextElementSibling;
+            
+            // 关闭其他打开的菜单
+            document.querySelectorAll('.more-actions-menu').forEach(m => {
+                if (m !== menu) {
+                    m.classList.add('hidden');
+                }
+            });
+            
+            // 切换当前菜单
+            menu.classList.toggle('hidden');
+        });
+    });
+    
+    // 绑定菜单项事件
+    document.querySelectorAll('.action-rename').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showToast('重命名功能开发中', 'info');
+            this.closest('.more-actions-menu').classList.add('hidden');
+        });
+    });
+    
+    document.querySelectorAll('.action-edit').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showToast('编辑功能开发中', 'info');
+            this.closest('.more-actions-menu').classList.add('hidden');
+        });
+    });
+    
+    document.querySelectorAll('.action-collect').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const tableId = this.getAttribute('data-table-id');
+            collectMetadata(tableId);
+            this.closest('.more-actions-menu').classList.add('hidden');
+        });
+    });
+    
+    document.querySelectorAll('.action-move').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showToast('移动到功能开发中', 'info');
+            this.closest('.more-actions-menu').classList.add('hidden');
+        });
+    });
+    
+    document.querySelectorAll('.action-delete').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const tableId = this.getAttribute('data-table-id');
+            const tableName = this.getAttribute('data-table-name');
+            showDeleteConfirmation(tableId, tableName);
+            this.closest('.more-actions-menu').classList.add('hidden');
+        });
+    });
+    
+    // 点击页面其他地方关闭菜单
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.more-actions-btn') && !e.target.closest('.more-actions-menu')) {
+            document.querySelectorAll('.more-actions-menu').forEach(menu => {
+                menu.classList.add('hidden');
+            });
+        }
+    });
+        }
+        
+        // 切换到表管理标签
+        function switchToTableManagementTab() {
+            // 关闭所有弹窗
+            closeAllModals();
+            
+            // 移除所有标签的活跃状态
+            document.querySelectorAll('.tab-item').forEach(tab => {
+                tab.classList.remove('tab-active');
+            });
+            
+            // 激活表管理标签
+            document.querySelector('[data-tab="table-management"]').classList.add('tab-active');
+            
+            // 隐藏所有内容区域
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // 显示表管理内容
+            document.getElementById('table-management-tab').classList.remove('hidden');
+            
+            // 更新面包屑和表格内容
+            updateBreadcrumb(currentDirectoryId);
+            updateTableManagementContent(currentDirectoryId);
+        }
+        
+        // 打开表标签
+        function openTableTab(tableId, tableName) {
+            // 关闭所有弹窗
+            closeAllModals();
+            
+            // 检查标签是否已存在
+            let tabElement = document.querySelector(`[data-tab="${tableId}"]`);
+            
+            if (!tabElement) {
+                // 获取右侧标签页导航和内容容器
+                const tabContainer = document.getElementById('tab-container');
+                const contentContainer = document.getElementById('content-container');
+                
+                // 创建新标签
+                tabElement = document.createElement('div');
+                tabElement.className = 'tab-item px-4 py-2 border border-b-0 cursor-pointer';
+                tabElement.setAttribute('data-tab', tableId);
+                tabElement.innerHTML = `
+                    ${tableName}
+                    <button class="ml-2 close-tab text-gray-500 hover:text-gray-700">×</button>
+                `;
+                tabContainer.appendChild(tabElement);
+                
+                // 为新标签添加点击事件
+                tabElement.addEventListener('click', function(e) {
+                    if (!e.target.classList.contains('close-tab')) {
+                        switchToTab(tableId);
+                        // 同步选中目录树中的对应表
+                        selectItem(tableId, 'table');
+                    }
+                });
+                
+                // 为关闭按钮添加点击事件
+                tabElement.querySelector('.close-tab').addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    closeTab(tableId);
+                });
+                
+                // 创建标签内容
+                const contentElement = document.createElement('div');
+                contentElement.id = `${tableId}-tab`;
+                contentElement.className = 'tab-content hidden';
+                contentElement.innerHTML = generateTableContent(tableId, tableName);
+                contentContainer.appendChild(contentElement);
+            }
+            
+            // 修改1: 当点击表时，确保对应的标签页被选中
+            switchToTab(tableId);
+        }
+
+        // 新增：打开采集计划管理标签
+        function openPlanManagementTab() {
+            // 检查标签是否已存在
+            let tabElement = document.querySelector('[data-tab="plan-management"]');
+            if (!tabElement) {
+                const tabContainer = document.getElementById('tab-container');
+                const contentContainer = document.getElementById('content-container');
+
+                tabElement = document.createElement('div');
+                tabElement.className = 'tab-item px-4 py-2 border border-b-0 cursor-pointer';
+                tabElement.setAttribute('data-tab', 'plan-management');
+                tabElement.textContent = '采集计划管理';
+                tabContainer.appendChild(tabElement);
+
+                tabElement.addEventListener('click', function() {
+                    switchToTab('plan-management');
+                    selectItem('plan-management', 'plan');
+                });
+
+                const contentElement = document.createElement('div');
+                contentElement.id = 'plan-management-tab';
+                contentElement.className = 'tab-content hidden';
+                contentElement.innerHTML = `
+                    <div class="space-y-4">
+                        <h2 class="text-lg font-bold">采集计划管理</h2>
+                        <div class="text-sm text-gray-500">此处展示采集计划的配置与执行计划（占位）。</div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full border border-gray-300">
+                                <thead>
+                                    <tr class="list-header">
+                                        <th class="px-4 py-2 border-b text-left">计划名称</th>
+                                        <th class="px-4 py-2 border-b text-left">状态</th>
+                                        <th class="px-4 py-2 border-b text-left">下次执行时间</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="list-row"><td class="px-4 py-2 border-b">示例计划A</td><td class="px-4 py-2 border-b">启用</td><td class="px-4 py-2 border-b">2024-04-10 09:00:00</td></tr>
+                                    <tr class="list-row"><td class="px-4 py-2 border-b">示例计划B</td><td class="px-4 py-2 border-b">停用</td><td class="px-4 py-2 border-b">-</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                contentContainer.appendChild(contentElement);
+            }
+
+            switchToTab('plan-management');
+        }
+        
+        // 修改：重写表的详情内容生成函数
+        function generateTableContent(tableId, tableName) {
+            const tableInfo = tableManagementData.root.find(t => t.id === tableId) || {};
+            const detailData = tableDetailData[tableId] || { dataPreview: [], fieldInfo: [], metadataLogs: [] };
+            const metadataLogs = getMetadataLogsForTable(tableId, detailData.metadataLogs);
+
+            const dataPreviewHtml = generateDataPreviewTable(detailData.dataPreview);
+            const fieldInfoHtml = generateFieldInfoTable(detailData.fieldInfo);
+            const metadataLogHtml = generateMetadataLogTable(metadataLogs);
+
+            // 获取最新采集结果
+            const latestCollectionResult = metadataLogs.length > 0 ? metadataLogs[0].result : '未采集';
+            const latestCollectionTime = metadataLogs.length > 0 ? metadataLogs[0].endTime : '未采集';
+            
+            // 获取采集结果状态样式类
+            const getCollectionStatusClass = (result) => {
+                const statusMap = {
+                    '采集中': 'collection-status-collecting',
+                    '无变更': 'collection-status-no-change',
+                    '有变更': 'collection-status-changed',
+                    '采集失败': 'collection-status-failed',
+                    '初始化': 'collection-status-init'
+                };
+                return statusMap[result] || 'collection-status-no-change';
+            };
+
+            // 检查是否为SQL查询表
+            const isSqlTable = tableId.startsWith('logical-sql-') || detailData.sqlStatement;
+            const sqlStatementHtml = isSqlTable ? `
+                <div class="mt-4">
+                    <h3 class="font-semibold mb-2">SQL语句</h3>
+                    <div class="bg-gray-900 text-green-400 p-4 rounded font-mono text-sm whitespace-pre-line overflow-x-auto">
+                        ${detailData.sqlStatement || '暂无SQL语句'}
+                    </div>
+                </div>
+            ` : '';
+
+            return `
+                <div class="space-y-6">
+                    <div>
+                        <h2 class="text-lg font-bold mb-2">基本信息</h2>
+                        <div class="bg-gray-100 p-4 rounded-md">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <p><strong>逻辑表名:</strong> ${tableName}</p>
+                                    <p><strong>数据连接:</strong> ${tableInfo.connection || '无'}</p>
+                                    ${isSqlTable ? '<p><strong>表类型:</strong> <span class="text-blue-600">SQL查询表</span></p>' : ''}
+                                </div>
+                                <div>
+                                    <p><strong>最新采集结果:</strong> 
+                                        <span class="${getCollectionStatusClass(latestCollectionResult)}">${latestCollectionResult}</span>
+                                    </p>
+                                    <p><strong>最新采集时间:</strong> ${latestCollectionTime}</p>
+                                </div>
+                            </div>
+                            ${sqlStatementHtml}
+                            <div class="mt-4 flex space-x-3">
+                                <button id="collect-metadata-btn-${tableId}" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    采集元数据
+                                </button>
+                                <button class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600">
+                                    编辑
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex border-b border-gray-300">
+                        <div class="px-4 py-2 cursor-pointer border-b-2 border-transparent hover:border-blue-600 font-semibold text-gray-600 tab-detail" data-tab-name="data-preview">数据预览</div>
+                        <div class="px-4 py-2 cursor-pointer border-b-2 border-transparent hover:border-blue-600 font-semibold text-gray-600 tab-detail" data-tab-name="field-info">字段信息</div>
+                        <div class="px-4 py-2 cursor-pointer border-b-2 border-transparent hover:border-blue-600 font-semibold text-gray-600 tab-detail" data-tab-name="metadata-log">元数据采集记录</div>
+                        <div class="px-4 py-2 cursor-pointer border-b-2 border-transparent hover:border-blue-600 font-semibold text-gray-600 tab-detail" data-tab-name="update-log">更新记录</div>
+                    </div>
+
+                    <div id="${tableId}-tab-content">
+                        <div id="data-preview-tab" class="detail-tab-content">
+                            ${isSqlTable ? '<div class="text-center text-gray-500 p-4">SQL查询表需要先执行采集元数据才能预览数据</div>' : dataPreviewHtml}
+                        </div>
+                        <div id="field-info-tab" class="detail-tab-content hidden">
+                            ${isSqlTable ? '<div class="text-center text-gray-500 p-4">SQL查询表需要先执行采集元数据才能查看字段信息</div>' : fieldInfoHtml}
+                        </div>
+                        <div id="metadata-log-tab" class="detail-tab-content hidden">
+                            ${metadataLogHtml}
+                        </div>
+                        <div id="update-log-tab" class="detail-tab-content hidden p-4 text-center text-gray-500">
+                            暂无更新记录。
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 新增：获取或生成元数据采集记录（保证至少3条，按时间倒序）
+        function getMetadataLogsForTable(tableId, existingLogs = []) {
+            let logs = Array.isArray(existingLogs) ? [...existingLogs] : [];
+            if (logs.length < 3) {
+                const need = 3 - logs.length;
+                const now = new Date();
+                for (let i = 0; i < need; i++) {
+                    const d = new Date(now.getTime() - (i + 1) * 3600 * 1000);
+                    const ts = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+                    logs.push({ 
+                        id: `log-${tableId}-${Date.now()}-${i}`, 
+                        triggerType: i === 0 ? '采集计划-定时调度' : (i === 1 ? '采集计划-手动触发' : '单表手动触发'),
+                        result: (i % 2 === 0) ? '无变更' : '有变更',
+                        endTime: ts,
+                        runStatus: '成功',
+                        logContent: `开始采集任务\n连接数据源成功\n开始读取表结构\n表结构比对完成，${(i % 2 === 0) ? '无变更' : '发现变更'}\n元数据更新成功\n采集任务完成`
+                    });
+                }
+            }
+            // 按时间倒序
+            logs.sort((a, b) => new Date(b.endTime) - new Date(a.endTime));
+            // 回填
+            if (!tableDetailData[tableId]) tableDetailData[tableId] = { dataPreview: [], fieldInfo: [], metadataLogs: [] };
+            tableDetailData[tableId].metadataLogs = logs;
+            return logs;
+        }
+
+        // 新增：获取状态样式类
+        function getStatusClass(status) {
+            const statusMap = {
+                '排队中': 'status-queue',
+                '构建中': 'status-building',
+                '运行中': 'status-running',
+                '成功': 'status-success',
+                '构建失败': 'status-build-failed',
+                '运行失败': 'status-run-failed',
+                '中断': 'status-interrupted'
+            };
+            return statusMap[status] || 'status-queue';
+        }
+
+        // 新增：获取结果样式类
+        function getResultClass(result) {
+            const resultMap = {
+                '采集中': 'result-collecting',
+                '无变更': 'result-no-change',
+                '有变更': 'result-changed',
+                '采集失败': 'result-failed',
+                '初始化': 'result-init'
+            };
+            return resultMap[result] || 'result-no-change';
+        }
+
+        // 新增：显示运行日志弹窗（用于采集计划管理）
+        function showRunLog(logId) {
+            // 查找对应的日志内容
+            let logContent = '';
+            for (const tableId in tableDetailData) {
+                const logs = tableDetailData[tableId].metadataLogs || [];
+                const log = logs.find(l => l.id === logId);
+                if (log) {
+                    logContent = log.logContent || '暂无日志内容';
+                    break;
+                }
+            }
+            
+            document.getElementById('run-log-content').textContent = logContent;
+            document.getElementById('run-log-modal').classList.remove('hidden');
+        }
+
+        // 新增：显示元数据采集记录日志弹窗（用于逻辑表详情页）
+        function showMetadataLog(logId) {
+            // 查找对应的日志内容
+            let logContent = '';
+            for (const tableId in tableDetailData) {
+                const logs = tableDetailData[tableId].metadataLogs || [];
+                const log = logs.find(l => l.id === logId);
+                if (log) {
+                    logContent = log.logContent || '暂无日志内容';
+                    break;
+                }
+            }
+            
+            document.getElementById('metadata-log-content').textContent = logContent;
+            document.getElementById('metadata-log-modal').classList.remove('hidden');
+        }
+
+        // 新增：显示删除确认弹窗
+        function showDeleteConfirmation(tableId, tableName) {
+            const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
+            deleteConfirmBtn.setAttribute('data-table-id', tableId);
+            deleteConfirmBtn.setAttribute('data-table-name', tableName);
+            document.getElementById('delete-confirmation-modal').classList.remove('hidden');
+        }
+
+        // 新增：删除逻辑表
+        function deleteLogicalTable(tableId, tableName) {
+            try {
+                // 1. 从所有目录的管理数据中删除
+                Object.keys(tableManagementData).forEach(directoryId => {
+                    const index = tableManagementData[directoryId].findIndex(table => table.id === tableId);
+                    if (index !== -1) {
+                        tableManagementData[directoryId].splice(index, 1);
+                    }
+                });
+
+                // 2. 删除表详情数据
+                delete tableDetailData[tableId];
+
+                // 3. 从采集计划管理中删除
+                Object.keys(planTablesData).forEach(connId => {
+                    const index = planTablesData[connId].findIndex(table => table.id === tableId);
+                    if (index !== -1) {
+                        planTablesData[connId].splice(index, 1);
+                    }
+                });
+
+                // 4. 从采集计划运行记录中删除相关数据
+                Object.keys(planRunsData).forEach(connId => {
+                    planRunsData[connId].forEach(run => {
+                        if (run.details) {
+                            run.details = run.details.filter(detail => detail.id !== tableId);
+                            run.count = run.details.length;
+                        }
+                    });
+                });
+
+                // 5. 从目录树中删除对应的DOM元素
+                const tableElement = document.querySelector(`[data-type="table"][data-id="${tableId}"]`);
+                if (tableElement) {
+                    tableElement.remove();
+                }
+
+                // 6. 关闭可能打开的标签页
+                const tabElement = document.querySelector(`[data-tab="${tableId}"]`);
+                if (tabElement) {
+                    closeTab(tableId);
+                }
+
+                // 7. 刷新当前目录的表格内容
+                updateTableManagementContent(currentDirectoryId);
+
+                // 8. 更新原始目录树状态（移除已删除的表）
+                saveOriginalTreeState();
+                
+                // 9. 如果正在搜索，重新执行搜索以移除已删除的表
+                if (isSearching && searchInput && searchInput.value.trim()) {
+                    performSearch(searchInput.value.trim());
+                }
+
+                // 10. 显示成功提示
+                showSuccessToast('逻辑表已删除');
+
+                // 11. 更新物理表列表（如果新建逻辑表弹窗是打开的）
+                if (!document.getElementById('new-table-modal').classList.contains('hidden')) {
+                    renderPhysicalTableList();
+                }
+
+                // 12. 如果采集计划管理页面是打开的，刷新其内容
+                if (!document.getElementById('plan-overlay').classList.contains('hidden')) {
+                    const currentConn = getCurrentPlanConnection();
+                    if (currentConn) {
+                        renderPlanSegmentTables(currentConn);
+                    }
+                }
+
+            } catch (error) {
+                console.error('删除逻辑表失败:', error);
+                showSuccessToast('删除失败，请重试', 'error');
+            }
+        }
+
+        // 新增：采集元数据功能
+        function collectMetadata(tableId) {
+            const collectBtn = document.querySelector(`#collect-metadata-btn-${tableId}`);
+            if (!collectBtn || collectBtn.disabled) return;
+            
+            // 1. 按钮状态变更
+            collectBtn.disabled = true;
+            collectBtn.textContent = '采集中';
+            
+            // 2. 模拟采集过程（5秒）
+            setTimeout(() => {
+                // 3. 生成新的采集记录
+                const now = new Date();
+                const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+                
+                // 随机生成采集结果（模拟实际情况）
+                const results = ['无变更', '有变更', '采集失败'];
+                const randomResult = results[Math.floor(Math.random() * results.length)];
+                
+                const newLog = {
+                    id: `log-${tableId}-${Date.now()}`,
+                    triggerType: '单表手动触发',
+                    result: randomResult,
+                    endTime: timestamp,
+                    runStatus: randomResult === '采集失败' ? '失败' : '成功',
+                    logContent: `2024-04-10 ${timestamp} 开始采集任务
+2024-04-10 ${timestamp} 连接数据源成功
+2024-04-10 ${timestamp} 开始读取表结构
+2024-04-10 ${timestamp} 表结构比对完成，${randomResult === '有变更' ? '发现变更' : randomResult === '采集失败' ? '连接失败' : '无变更'}
+2024-04-10 ${timestamp} 元数据更新${randomResult === '采集失败' ? '失败' : '成功'}
+2024-04-10 ${timestamp} 采集任务${randomResult === '采集失败' ? '失败' : '完成'}`
+                };
+                
+                // 4. 更新表详情数据
+                if (!tableDetailData[tableId]) {
+                    tableDetailData[tableId] = { dataPreview: [], fieldInfo: [], metadataLogs: [] };
+                }
+                tableDetailData[tableId].metadataLogs.unshift(newLog); // 添加到开头
+                
+                // 5. 更新表管理数据 - 确保与采集记录数据源一致
+                const tableInfo = tableManagementData.root.find(t => t.id === tableId);
+                if (tableInfo) {
+                    // 直接从采集记录获取最新数据，确保数据源一致
+                    const latestLog = tableDetailData[tableId].metadataLogs[0];
+                    tableInfo.lastCollectionResult = latestLog.result;
+                    tableInfo.lastCollectionTime = latestLog.endTime;
+                    
+                    // 同步更新所有目录中的该表数据
+                    Object.keys(tableManagementData).forEach(directoryId => {
+                        const tableInDir = tableManagementData[directoryId].find(t => t.id === tableId);
+                        if (tableInDir) {
+                            tableInDir.lastCollectionResult = latestLog.result;
+                            tableInDir.lastCollectionTime = latestLog.endTime;
+                        }
+                    });
+                }
+                
+                // 6. 刷新当前表格内容
+                updateTableManagementContent(currentDirectoryId);
+                
+                // 7. 刷新当前标签页内容
+                const tableName = tableInfo ? tableInfo.name : tableId;
+                const contentElement = document.getElementById(`${tableId}-tab`);
+                if (contentElement) {
+                    contentElement.innerHTML = generateTableContent(tableId, tableName);
+                    
+                    // 重新绑定事件
+                    bindTableDetailEvents(tableId, contentElement);
+                    
+                    // 8. 自动切换到元数据采集记录标签页
+                    const metaTab = contentElement.querySelector('[data-tab-name="metadata-log"]');
+                    if (metaTab) {
+                        metaTab.click();
+                    }
+                }
+                
+                // 9. 恢复按钮状态
+                collectBtn.disabled = false;
+                collectBtn.textContent = '采集元数据';
+                
+                // 10. 显示成功提示
+                showSuccessToast(`元数据采集${randomResult === '采集失败' ? '失败' : '完成'}`);
+                
+            }, 5000); // 5秒后执行
+        }
+        
+        // 新增：绑定表详情页事件
+        function bindTableDetailEvents(tableId, contentElement) {
+            // 为详情页的tab添加点击事件
+            contentElement.querySelectorAll('.tab-detail').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabName = this.getAttribute('data-tab-name');
+                    switchDetailTab(contentElement, tabName);
+                });
+            });
+            
+            // 为"查看日志"按钮添加事件委托
+            contentElement.addEventListener('click', function(e) {
+                if (e.target.classList.contains('show-log-btn')) {
+                    const logId = e.target.getAttribute('data-log-id');
+                    showMetadataLog(logId);
+                }
+            });
+            
+            // 为"采集元数据"按钮添加事件监听器
+            const collectBtn = contentElement.querySelector(`#collect-metadata-btn-${tableId}`);
+            if (collectBtn) {
+                collectBtn.addEventListener('click', function() {
+                    collectMetadata(tableId);
+                });
+            }
+        }
+
+        // 新增：显示成功提示Toast
+        function showSuccessToast(message, type = 'success') {
+            const toast = document.getElementById('success-toast');
+            const messageElement = document.getElementById('success-message');
+            
+            // 根据类型设置样式和图标
+            if (type === 'error') {
+                toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 -translate-y-full bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg transition-all duration-300 z-[70]';
+                messageElement.innerHTML = message;
+            } else {
+                toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 -translate-y-full bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg transition-all duration-300 z-[70]';
+                messageElement.innerHTML = message;
+            }
+            
+            // 先移除hidden类，显示Toast
+            toast.classList.remove('hidden');
+            
+            // 使用requestAnimationFrame确保DOM更新后再执行动画
+            requestAnimationFrame(() => {
+                // 显示Toast - 从顶部滑入
+                toast.classList.remove('-translate-y-full');
+                toast.classList.add('translate-y-0');
+            });
+            
+            // 2秒后自动隐藏 - 滑出到顶部
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0');
+                toast.classList.add('-translate-y-full');
+                
+                // 动画完成后完全隐藏
+                setTimeout(() => {
+                    toast.classList.add('hidden');
+                }, 300); // 等待动画完成
+            }, 2000);
+        }
+
+        // 新增：关闭所有弹窗
+        function closeAllModals() {
+            // 关闭删除确认弹窗
+            document.getElementById('delete-confirmation-modal').classList.add('hidden');
+            
+            // 关闭元数据采集记录日志弹窗
+            document.getElementById('metadata-log-modal').classList.add('hidden');
+            
+            // 关闭运行日志弹窗
+            document.getElementById('run-log-modal').classList.add('hidden');
+            
+            // 关闭新建逻辑表弹窗
+            document.getElementById('new-table-modal').classList.add('hidden');
+            
+            // 关闭采集计划管理相关弹窗
+            document.getElementById('run-detail-modal').classList.add('hidden');
+            
+            // 关闭采集计划管理全屏覆盖
+            document.getElementById('plan-overlay').classList.add('hidden');
+            
+            // 关闭成功提示Toast
+            const toast = document.getElementById('success-toast');
+            toast.classList.add('hidden');
+            toast.classList.remove('translate-y-0');
+            toast.classList.add('-translate-y-full');
+        }
+
+        // 新增：生成元数据采集记录表格
+        function generateMetadataLogTable(logs) {
+            if (!logs || logs.length === 0) {
+                return '<div class="text-center text-gray-500 p-4">暂无元数据采集记录。</div>';
+            }
+            let html = `
+                <div class="overflow-x-auto">
+                    <table class="min-w-full border border-gray-300">
+                        <thead>
+                            <tr class="list-header">
+                                <th class="px-4 py-2 border-b text-left">记录ID</th>
+                                <th class="px-4 py-2 border-b text-left">触发方式</th>
+                                <th class="px-4 py-2 border-b text-left">采集结果</th>
+                                <th class="px-4 py-2 border-b text-left">采集结束时间</th>
+                                <th class="px-4 py-2 border-b text-left">采集运行状态</th>
+                                <th class="px-4 py-2 border-b text-left">运行日志</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            logs.forEach(row => {
+                const statusClass = getStatusClass(row.runStatus);
+                html += `
+                    <tr class="list-row">
+                        <td class="px-4 py-2 border-b whitespace-nowrap">${row.id}</td>
+                        <td class="px-4 py-2 border-b whitespace-nowrap">${row.triggerType}</td>
+                        <td class="px-4 py-2 border-b whitespace-nowrap">
+                            <span class="px-2 py-1 rounded text-xs ${getResultClass(row.result)}">${row.result}</span>
+                        </td>
+                        <td class="px-4 py-2 border-b whitespace-nowrap">${row.endTime}</td>
+                        <td class="px-4 py-2 border-b whitespace-nowrap">
+                            <span class="px-2 py-1 rounded text-xs ${statusClass}">${row.runStatus}</span>
+                        </td>
+                        <td class="px-4 py-2 border-b whitespace-nowrap">
+                            <button class="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 show-log-btn" 
+                                    data-log-id="${row.id}">查看日志</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            return html;
+        }
+
+        // 新增：生成数据预览表格HTML
+        function generateDataPreviewTable(data) {
+            if (!data || data.length === 0) {
+                return '<div class="text-center text-gray-500 p-4">该表没有数据。</div>';
+            }
+            const headers = Object.keys(data[0]);
+            let tableHtml = `
+                <div class="overflow-x-auto">
+                    <table class="min-w-full border border-gray-300">
+                        <thead>
+                            <tr class="list-header">
+            `;
+            headers.forEach(header => {
+                tableHtml += `<th class="px-4 py-2 border-b text-left whitespace-nowrap">${header}</th>`;
+            });
+            tableHtml += `
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            data.forEach(row => {
+                tableHtml += `<tr class="list-row">`;
+                headers.forEach(header => {
+                    tableHtml += `<td class="px-4 py-2 border-b whitespace-nowrap">${row[header]}</td>`;
+                });
+                tableHtml += `</tr>`;
+            });
+            tableHtml += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            return tableHtml;
+        }
+
+        // 新增：生成字段信息表格HTML
+        function generateFieldInfoTable(data) {
+            if (!data || data.length === 0) {
+                return '<div class="text-center text-gray-500 p-4">暂无字段信息。</div>';
+            }
+            const headers = ['字段名', '数据类型', '长度', '主键', '非空', '默认值', '字段说明', '约束规则'];
+            let tableHtml = `
+                <div class="overflow-x-auto">
+                    <table class="min-w-full border border-gray-300">
+                        <thead>
+                            <tr class="list-header">
+            `;
+            headers.forEach(header => {
+                tableHtml += `<th class="px-4 py-2 border-b text-left whitespace-nowrap">${header}</th>`;
+            });
+            tableHtml += `
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            data.forEach(row => {
+                tableHtml += `<tr class="list-row">`;
+                headers.forEach(header => {
+                    tableHtml += `<td class="px-4 py-2 border-b whitespace-nowrap">${row[header]}</td>`;
+                });
+                tableHtml += `</tr>`;
+            });
+            tableHtml += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            return tableHtml;
+        }
+        
+        // 切换到指定标签
+        function switchToTab(tabId) {
+            // 关闭所有弹窗
+            closeAllModals();
+            
+            // 移除所有标签的活跃状态
+            document.querySelectorAll('.tab-item').forEach(tab => {
+                tab.classList.remove('tab-active');
+            });
+            
+            // 激活指定标签
+            const targetTab = document.querySelector(`[data-tab="${tabId}"]`);
+            if (targetTab) {
+                targetTab.classList.add('tab-active');
+            }
+            
+            // 隐藏所有内容区域
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // 显示指定标签内容
+            const contentElement = document.getElementById(`${tabId}-tab`);
+            if (contentElement) {
+                contentElement.classList.remove('hidden');
+                // 确保第一次打开时，默认选中第一个详情tab
+                const firstDetailTab = contentElement.querySelector('.tab-detail');
+                if(firstDetailTab) {
+                    firstDetailTab.click();
+                }
+                
+                // 新增：绑定表详情页事件
+                bindTableDetailEvents(tabId, contentElement);
+            }
+        }
+        
+        // 新增：切换详情页内的子Tab
+        function switchDetailTab(parentElement, tabName) {
+            // 移除所有详情tab的活跃样式
+            parentElement.querySelectorAll('.tab-detail').forEach(tab => {
+                tab.classList.remove('border-blue-600', 'font-semibold', 'text-gray-600');
+                tab.classList.add('border-transparent');
+            });
+            // 激活当前点击的详情tab
+            parentElement.querySelector(`[data-tab-name="${tabName}"]`).classList.add('border-blue-600', 'font-semibold', 'text-gray-600');
+            parentElement.querySelector(`[data-tab-name="${tabName}"]`).classList.remove('border-transparent');
+            
+            // 隐藏所有详情内容
+            parentElement.querySelectorAll('.detail-tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            // 显示当前点击的详情内容
+            parentElement.querySelector(`#${tabName}-tab`).classList.remove('hidden');
+        }
+
+        // 关闭标签
+        function closeTab(tabId) {
+            // 移除标签元素
+            const tabElement = document.querySelector(`[data-tab="${tabId}"]`);
+            if (tabElement) {
+                tabElement.remove();
+            }
+            
+            // 移除标签内容
+            const contentElement = document.getElementById(`${tabId}-tab`);
+            if (contentElement) {
+                contentElement.remove();
+            }
+            
+            // 如果关闭的是当前活跃标签，切换到表管理
+            if (tabElement.classList.contains('tab-active')) {
+                switchToTableManagementTab();
+                // 同步选中目录树中的上次目录
+                selectItem(lastDirectoryId, lastDirectoryId === 'root' ? 'directory' : 'folder');
+            }
+        }
+
+        // 新增弹窗函数
+        function openModal() {
+            const newTableModal = document.getElementById('new-table-modal');
+            newTableModal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden'); // 防止背景滚动
+        }
+
+        function closeModal() {
+            const newTableModal = document.getElementById('new-table-modal');
+            newTableModal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        // 渲染目录下拉框的函数
+        function renderDirectorySelect() {
+            const selectElement = document.getElementById('directory-select');
+            selectElement.innerHTML = '';
+            
+            function generateOptions(data, path = [], indent = '') {
+                data.forEach(item => {
+                    const fullPath = [...path, item.id];
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.textContent = `${indent}${item.name}`;
+                    selectElement.appendChild(option);
+                    
+                    if (item.children) {
+                        generateOptions(item.children, fullPath, `${indent}  `);
+                    }
+                });
+            }
+            generateOptions(directoryTree);
+            selectElement.value = currentDirectoryId;
+        }
+
+        // 渲染物理表列表
+        function renderPhysicalTableList() {
+            const physicalTableList = document.getElementById('physical-table-list');
+            physicalTableList.innerHTML = ''; // 清空列表
+            let html = '';
+
+            // 获取已存在的逻辑表名称（用于过滤）
+            const existingLogicalTables = new Set();
+            Object.values(tableManagementData).forEach(tables => {
+                tables.forEach(table => {
+                    // 提取物理表名称（去掉"数据连接 A_"前缀）
+                    const physicalTableName = table.name.replace(/^数据连接 [A-Z]_/, '');
+                    existingLogicalTables.add(physicalTableName);
+                });
+            });
+
+            function generateListHtml(data, indentLevel = 0) {
+                let hasVisibleChildren = false;
+                let childHtml = '';
+                
+                data.forEach(item => {
+                    if (item.children) { // 文件夹
+                        // 先递归处理子项
+                        const childResult = generateListHtml(item.children, indentLevel + 1);
+                        
+                        if (childResult.hasVisible) {
+                            hasVisibleChildren = true;
+                            childHtml += `
+                                <div class="flex items-center p-2 hover:bg-gray-100 cursor-pointer" style="padding-left: ${1.5 * indentLevel}rem;" data-type="physical-folder" data-id="${item.id}">
+                                    <div class="flex items-center">
+                                        <input type="checkbox" class="form-checkbox text-primary rounded" data-type="folder-checkbox" data-id="${item.id}">
+                                        <span class="toggle-btn ml-2 mr-1">
+                                            <i class="fa fa-chevron-down text-gray-500"></i>
+                                        </span>
+                                    </div>
+                                    <i class="fa fa-folder text-yellow-500 mr-2"></i>
+                                    <span>${item.name}</span>
+                                </div>
+                                <div id="${item.id}-content" style="padding-left: ${1.5 * (indentLevel + 1)}rem;">
+                            `;
+                            childHtml += childResult.html;
+                            childHtml += `</div>`;
+                        }
+                    } else { // 表
+                        const tableName = item.name;
+                        // 只显示未生成逻辑表的物理表
+                        if (!existingLogicalTables.has(tableName)) {
+                            hasVisibleChildren = true;
+                            childHtml += `
+                                <div class="flex items-center p-2 hover:bg-gray-100 cursor-pointer">
+                                    <input type="checkbox" class="form-checkbox text-primary rounded" data-table-id="${item.id}" data-table-name="${tableName}" data-parent-id="${item.parentId}">
+                                    <i class="fa fa-table text-green-600 mr-2 ml-2"></i>
+                                    <span>${tableName}</span>
+                                </div>
+                            `;
+                        }
+                    }
+                });
+                
+                return { hasVisible: hasVisibleChildren, html: childHtml };
+            }
+
+            // 递归遍历数据，并为子节点添加父ID
+            function processData(data, parentId = null) {
+                return data.map(item => {
+                    const newItem = { ...item, parentId };
+                    if (item.children) {
+                        newItem.children = processData(item.children, item.id);
+                    }
+                    return newItem;
+                });
+            }
+
+            const processedData = processData(physicalTableData);
+            const result = generateListHtml(processedData);
+            
+            // 检查是否有可用的物理表
+            if (!result.hasVisible) {
+                html = `
+                    <div class="text-center text-gray-500 p-4">
+                        <i class="fa fa-info-circle mr-2"></i>
+                        暂无可用的物理表（所有表均已生成逻辑表）
+                    </div>
+                `;
+            } else {
+                // 添加提示信息
+                html = `
+                    <div class="text-sm text-gray-600 mb-2 p-2 bg-blue-50 rounded">
+                        <i class="fa fa-info-circle mr-1"></i>
+                        仅显示未生成逻辑表的物理表
+                    </div>
+                    ${result.html}
+                `;
+            }
+            
+            physicalTableList.innerHTML = html;
+            
+            // 为物理表勾选框添加事件监听器
+            const checkboxes = physicalTableList.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function(e) {
+                    if (this.getAttribute('data-type') === 'folder-checkbox') {
+                        // 文件夹复选框的逻辑
+                        handleFolderCheckbox(this);
+                    } else {
+                        // 表复选框的逻辑
+                        handleTableCheckbox(this);
+                    }
+                    updateGenerateButtonText();
+                });
+            });
+        }
+        
+        // 新增：物理表文件夹切换展开/收起状态
+        function togglePhysicalFolder(toggleElement) {
+            const folderElement = toggleElement.closest('[data-type="physical-folder"]');
+            const folderId = folderElement.getAttribute('data-id');
+            const targetContent = document.getElementById(`${folderId}-content`);
+            const icon = toggleElement.querySelector('i');
+            
+            if (targetContent) {
+                // 切换内容显示状态
+                targetContent.classList.toggle('hidden');
+                
+                // 切换图标
+                if (targetContent.classList.contains('hidden')) {
+                    icon.classList.remove('fa-chevron-down');
+                    icon.classList.add('fa-chevron-right');
+                } else {
+                    icon.classList.remove('fa-chevron-right');
+                    icon.classList.add('fa-chevron-down');
+                }
+            }
+        }
+
+        // ================== 搜索功能实现 ==================
+        
+        // 保存原始目录树状态
+        function saveOriginalTreeState() {
+            const treeContainer = document.querySelector('.mb-2');
+            originalTreeState = {
+                html: treeContainer.innerHTML,
+                expandedFolders: new Set()
+            };
+            
+            // 记录当前展开的文件夹
+            document.querySelectorAll('[data-type="folder"]').forEach(folder => {
+                const folderId = folder.getAttribute('data-id');
+                const content = document.getElementById(`${folderId}-content`);
+                if (content && !content.classList.contains('hidden')) {
+                    originalTreeState.expandedFolders.add(folderId);
+                }
+            });
+        }
+
+        // 执行搜索
+        function performSearch(searchTerm) {
+            if (!searchTerm) return;
+            
+            isSearching = true;
+            const treeContainer = document.querySelector('.mb-2');
+            const searchResults = findMatchingItems(searchTerm);
+            
+            if (searchResults.length === 0) {
+                // 显示无结果提示
+                treeContainer.innerHTML = `
+                    <div class="text-center text-gray-500 p-8">
+                        <i class="fa fa-search text-4xl mb-4"></i>
+                        <p>未找到匹配的文件夹或表</p>
+                        <p class="text-sm mt-2">请尝试其他关键词</p>
+                    </div>
+                `;
+            } else {
+                // 显示搜索结果
+                displaySearchResults(searchResults, searchTerm);
+            }
+        }
+
+        // 查找匹配项
+        function findMatchingItems(searchTerm) {
+            const results = [];
+            const lowerSearchTerm = searchTerm.toLowerCase();
+            
+            // 从原始HTML中搜索，而不是从当前DOM中搜索
+            const originalHTML = originalTreeState.html;
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = originalHTML;
+            
+            // 搜索文件夹
+            const folders = tempDiv.querySelectorAll('[data-type="folder"]');
+            folders.forEach(folder => {
+                const span = folder.querySelector('span');
+                if (span) {
+                    const folderName = span.textContent.toLowerCase();
+                    if (folderName.includes(lowerSearchTerm)) {
+                        results.push({
+                            type: 'folder',
+                            element: folder,
+                            name: span.textContent,
+                            id: folder.getAttribute('data-id')
+                        });
+                    }
+                }
+            });
+            
+            // 搜索表
+            const tables = tempDiv.querySelectorAll('[data-type="table"]');
+            tables.forEach(table => {
+                const span = table.querySelector('span');
+                if (span) {
+                    const tableName = span.textContent.toLowerCase();
+                    if (tableName.includes(lowerSearchTerm)) {
+                        results.push({
+                            type: 'table',
+                            element: table,
+                            name: span.textContent,
+                            id: table.getAttribute('data-id'),
+                            parentId: table.getAttribute('data-parent')
+                        });
+                    }
+                }
+            });
+            
+            return results;
+        }
+
+        // 显示搜索结果
+        function displaySearchResults(results, searchTerm) {
+            const treeContainer = document.querySelector('.mb-2');
+            let html = '';
+            
+            // 按层级组织结果
+            const folderResults = results.filter(r => r.type === 'folder');
+            const tableResults = results.filter(r => r.type === 'table');
+            
+            // 构建搜索结果HTML
+            html += '<div id="root-directory" class="flex items-center p-2 hover:bg-gray-100 cursor-pointer" data-id="root" data-type="directory">';
+            html += '<i class="fa fa-database mr-2 text-blue-600"></i>';
+            html += '<span>根目录</span>';
+            html += '</div>';
+            
+            // 处理文件夹结果
+            folderResults.forEach(result => {
+                const folderId = result.id;
+                const folderName = result.name;
+                const highlightedName = highlightSearchTerm(folderName, searchTerm);
+                
+                html += `
+                    <div class="mb-1 tree-indent">
+                        <div class="flex items-center p-2 hover:bg-gray-100 cursor-pointer" data-type="folder" data-id="${folderId}">
+                            <span class="toggle-btn mr-1">
+                                <i class="fa fa-chevron-down text-gray-500"></i>
+                            </span>
+                            <i class="fa fa-folder text-yellow-500 mr-2"></i>
+                            <span>${highlightedName}</span>
+                        </div>
+                        <div id="${folderId}-content" class="tree-indent">
+                `;
+                
+                // 添加该文件夹下的匹配表
+                const folderTables = tableResults.filter(t => t.parentId === folderId);
+                folderTables.forEach(table => {
+                    const tableName = table.name;
+                    const highlightedTableName = highlightSearchTerm(tableName, searchTerm);
+                    html += `
+                        <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="${table.id}" data-parent="${folderId}">
+                            <i class="fa fa-table text-green-600 mr-3"></i>
+                            <span>${highlightedTableName}</span>
+                        </div>
+                    `;
+                });
+                
+                html += '</div></div>';
+            });
+            
+            // 处理根目录下的表
+            const rootTables = tableResults.filter(t => t.parentId === 'root' || !t.parentId);
+            if (rootTables.length > 0) {
+                rootTables.forEach(table => {
+                    const tableName = table.name;
+                    const highlightedTableName = highlightSearchTerm(tableName, searchTerm);
+                    html += `
+                        <div class="mb-1 tree-indent">
+                            <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="${table.id}" data-parent="root">
+                                <i class="fa fa-table text-green-600 mr-3"></i>
+                                <span>${highlightedTableName}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            treeContainer.innerHTML = html;
+            
+            // 重新绑定事件
+            bindTreeEvents();
+        }
+
+        // 高亮搜索关键词
+        function highlightSearchTerm(text, searchTerm) {
+            const regex = new RegExp(`(${searchTerm})`, 'gi');
+            return text.replace(regex, '<span class="bg-yellow-200 font-semibold">$1</span>');
+        }
+
+        // 清空搜索
+        function clearSearch() {
+            isSearching = false;
+            searchInput.value = '';
+            searchIcon.classList.remove('hidden');
+            clearIcon.classList.add('hidden');
+            
+            // 恢复原始目录树状态
+            const treeContainer = document.querySelector('.mb-2');
+            treeContainer.innerHTML = originalTreeState.html;
+            
+            // 恢复展开状态
+            originalTreeState.expandedFolders.forEach(folderId => {
+                const content = document.getElementById(`${folderId}-content`);
+                if (content) {
+                    content.classList.remove('hidden');
+                }
+            });
+            
+            // 重新绑定事件
+            bindTreeEvents();
+        }
+
+        // 绑定目录树事件
+        function bindTreeEvents() {
+            // 为文件夹切换图标添加点击事件
+            document.querySelectorAll('.toggle-btn').forEach(toggle => {
+                toggle.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    toggleFolder(this);
+                });
+            });
+            
+            // 为文件夹添加点击事件
+            document.querySelectorAll('[data-type="folder"]').forEach(folder => {
+                folder.addEventListener('click', function() {
+                    const folderId = this.getAttribute('data-id');
+                    const toggleBtn = this.querySelector('.toggle-btn i');
+                    
+                    // 如果文件夹是收起状态，则展开它
+                    if (toggleBtn.classList.contains('fa-chevron-right')) {
+                        toggleFolder(this.querySelector('.toggle-btn'));
+                    }
+                    
+                    // 选中文件夹
+                    selectItem(folderId, 'folder');
+                    switchToTableManagementTab();
+                });
+            });
+            
+            // 为根目录添加点击事件
+            const rootDir = document.getElementById('root-directory');
+            if (rootDir) {
+                rootDir.addEventListener('click', function() {
+                    selectItem('root', 'directory');
+                    switchToTableManagementTab();
+                });
+            }
+            
+            // 为表添加点击事件
+            document.querySelectorAll('[data-type="table"]').forEach(table => {
+                table.addEventListener('click', function() {
+                    const tableId = this.getAttribute('data-id');
+                    const tableName = this.querySelector('span').textContent.replace(/<[^>]*>/g, ''); // 移除HTML标签
+                    lastDirectoryId = currentDirectoryId;
+                    selectItem(tableId, 'table');
+                    openTableTab(tableId, tableName);
+                });
+            });
+        }
+
+        // ================== 采集计划管理：渲染与交互 ==================
+        function renderPlanConnections() {
+            planConnList.innerHTML = '';
+            planConnections.forEach(conn => {
+                const item = document.createElement('div');
+                item.className = `p-2 rounded cursor-pointer ${planCurrentConnId === conn.id ? 'bg-active' : 'hover:bg-gray-100'}`;
+                item.textContent = `${conn.name}`;
+                item.addEventListener('click', function() {
+                    selectPlanConnection(conn.id);
+                });
+                planConnList.appendChild(item);
+            });
+        }
+
+        function selectPlanConnection(connId) {
+            planCurrentConnId = connId;
+            renderPlanConnections();
+            const conn = planConnections.find(c => c.id === connId);
+            if (!conn) return;
+            // 基本信息
+            planBasicInfo.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div><strong>数据连接名称：</strong>${conn.name}</div>
+                    <div><strong>数据源类型：</strong>${conn.type}</div>
+                </div>
+            `;
+            // 调度信息
+            const sch = planScheduleData[connId] || { start: '-', freq: '-', next: '-', end: '-' };
+            planSchedule.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div><strong>调度开始时间：</strong>${sch.start}</div>
+                    <div><strong>运行频率：</strong>${sch.freq}</div>
+                    <div><strong>下次运行时间：</strong>${sch.next}</div>
+                    <div><strong>调度结束时间：</strong>${sch.end}</div>
+                </div>
+            `;
+            // 更新switch组件状态 - 使用独立状态存储
+            const scheduleSwitch = document.getElementById('schedule-switch');
+            const scheduleStatusText = document.getElementById('schedule-status-text');
+            if (scheduleSwitch && scheduleStatusText) {
+                // 从独立状态存储获取状态
+                const currentState = scheduleStateManager.getConnectionState(connId);
+                scheduleSwitch.checked = currentState;
+                
+                if (currentState) {
+                    scheduleStatusText.textContent = '已开启';
+                    scheduleStatusText.className = 'ml-2 text-sm font-medium text-green-600';
+                } else {
+                    scheduleStatusText.textContent = '已关闭';
+                    scheduleStatusText.className = 'ml-2 text-sm font-medium text-gray-500';
+                }
+                
+                // 移除旧的事件监听器（避免重复绑定）
+                const newSwitch = scheduleSwitch.cloneNode(true);
+                scheduleSwitch.parentNode.replaceChild(newSwitch, scheduleSwitch);
+                
+                // 添加新的switch状态变更事件监听器
+                newSwitch.addEventListener('change', function() {
+                    handleScheduleStatusChange(connId, this.checked);
+                });
+            }
+            
+            // 默认显示"表配置"
+            segTableBtn.classList.add('bg-active');
+            segRunsBtn.classList.remove('bg-active');
+            renderPlanSegmentTables(conn);
+        }
+
+        function getCurrentPlanConnection() {
+            return planConnections.find(c => c.id === planCurrentConnId);
+        }
+        
+        // 处理定时调度计划开关状态变更
+        function handleScheduleStatusChange(connId, enabled) {
+            const scheduleSwitch = document.getElementById('schedule-switch');
+            const scheduleStatusText = document.getElementById('schedule-status-text');
+            const originalState = !enabled; // 保存原始状态用于回滚
+            
+            // 显示加载状态
+            scheduleSwitch.disabled = true;
+            scheduleStatusText.textContent = '保存中...';
+            scheduleStatusText.className = 'ml-2 text-sm font-medium text-blue-600';
+            
+            // 模拟后端保存（实际项目中应该调用API）
+            setTimeout(() => {
+                try {
+                    // 使用独立状态存储管理器更新状态
+                    scheduleStateManager.updateConnectionState(connId, enabled);
+                    
+                    // 更新所有相关表的调度状态
+                    updateTableScheduleStatuses(connId, enabled);
+                    
+                    // 更新UI状态
+                    if (enabled) {
+                        scheduleStatusText.textContent = '已开启';
+                        scheduleStatusText.className = 'ml-2 text-sm font-medium text-green-600';
+                    } else {
+                        scheduleStatusText.textContent = '已关闭';
+                        scheduleStatusText.className = 'ml-2 text-sm font-medium text-gray-500';
+                    }
+                    
+                    // 显示成功提示
+                    showSuccessToast('调度状态已保存');
+                } catch (error) {
+                    // 保存失败，回滚状态
+                    scheduleSwitch.checked = originalState;
+                    scheduleStatusText.textContent = originalState ? '已开启' : '已关闭';
+                    scheduleStatusText.className = originalState ? 
+                        'ml-2 text-sm font-medium text-green-600' : 
+                        'ml-2 text-sm font-medium text-gray-500';
+                    
+                    showErrorToast('状态保存失败，请重试');
+                } finally {
+                    scheduleSwitch.disabled = false;
+                }
+            }, 1000); // 模拟网络延迟
+        }
+        
+        // 更新表调度状态
+        function updateTableScheduleStatuses(connId, enabled) {
+            // 更新所有目录中的表状态
+            Object.keys(tableManagementData).forEach(directoryId => {
+                tableManagementData[directoryId].forEach(table => {
+                    // 检查表是否在对应数据连接的表配置中
+                    const isInPlan = planTablesData[connId] && 
+                        planTablesData[connId].some(planTable => planTable.id === table.id);
+                    
+                    if (isInPlan) {
+                        table.scheduleStatus = enabled ? '已开启调度' : '未开启调度';
+                    }
+                });
+            });
+            
+            // 刷新表管理界面
+            updateTableManagementContent(currentDirectoryId);
+        }
+        
+        // 显示成功提示
+        function showSuccessToast(message) {
+            showToast(message, 'success');
+        }
+        
+        // 显示错误提示
+        function showErrorToast(message) {
+            showToast(message, 'error');
+        }
+        
+        // 通用提示函数
+        function showToast(message, type = 'info') {
+            // 创建提示元素
+            const toast = document.createElement('div');
+            toast.className = `fixed top-4 right-4 px-4 py-2 rounded-md text-white z-50 ${
+                type === 'success' ? 'bg-green-500' : 
+                type === 'error' ? 'bg-red-500' : 
+                'bg-blue-500'
+            }`;
+            toast.textContent = message;
+            
+            // 添加到页面
+            document.body.appendChild(toast);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 3000);
+        }
+        
+        // 数据一致性校验系统
+        const dataConsistencyChecker = {
+            // 执行全量数据一致性检查
+            performFullCheck: function() {
+                const inconsistencies = [];
+                
+                // 1. 检查表管理与采集记录的一致性
+                const collectionInconsistencies = dataSyncManager.validateDataConsistency();
+                inconsistencies.push(...collectionInconsistencies);
+                
+                // 2. 检查表管理与采集计划管理的一致性
+                const scheduleInconsistencies = this.checkScheduleConsistency();
+                inconsistencies.push(...scheduleInconsistencies);
+                
+                // 3. 检查命名一致性
+                const namingInconsistencies = this.checkNamingConsistency();
+                inconsistencies.push(...namingInconsistencies);
+                
+                return inconsistencies;
+            },
+            
+            // 检查调度状态一致性
+            checkScheduleConsistency: function() {
+                const inconsistencies = [];
+                
+                Object.keys(tableManagementData).forEach(directoryId => {
+                    tableManagementData[directoryId].forEach(table => {
+                        // 检查表是否在采集计划中
+                        let isInPlan = false;
+                        let planConnectionId = null;
+                        
+                        Object.keys(planTablesData).forEach(connId => {
+                            if (planTablesData[connId].some(planTable => planTable.id === table.id)) {
+                                isInPlan = true;
+                                planConnectionId = connId;
+                            }
+                        });
+                        
+                        // 根据是否在计划中判断预期状态
+                        let expectedStatus;
+                        if (!isInPlan) {
+                            expectedStatus = '未加入';
+                        } else {
+                            const connection = planConnections.find(conn => conn.id === planConnectionId);
+                            expectedStatus = connection && connection.scheduleEnabled ? '已开启调度' : '未开启调度';
+                        }
+                        
+                        if (table.scheduleStatus !== expectedStatus) {
+                            inconsistencies.push({
+                                type: 'schedule_status',
+                                tableId: table.id,
+                                tableName: table.name,
+                                directory: directoryId,
+                                expected: expectedStatus,
+                                actual: table.scheduleStatus
+                            });
+                        }
+                    });
+                });
+                
+                return inconsistencies;
+            },
+            
+            // 检查命名一致性
+            checkNamingConsistency: function() {
+                const inconsistencies = [];
+                
+                Object.keys(tableManagementData).forEach(directoryId => {
+                    tableManagementData[directoryId].forEach(table => {
+                        // 检查表管理中的名称是否与采集计划管理一致
+                        Object.keys(planTablesData).forEach(connId => {
+                            const planTable = planTablesData[connId].find(planTable => planTable.id === table.id);
+                            if (planTable && planTable.name !== table.name) {
+                                inconsistencies.push({
+                                    type: 'naming',
+                                    tableId: table.id,
+                                    tableName: table.name,
+                                    directory: directoryId,
+                                    planName: planTable.name,
+                                    managementName: table.name
+                                });
+                            }
+                        });
+                    });
+                });
+                
+                return inconsistencies;
+            },
+            
+            // 生成一致性报告
+            generateReport: function() {
+                const inconsistencies = this.performFullCheck();
+                const report = {
+                    timestamp: new Date().toISOString(),
+                    totalInconsistencies: inconsistencies.length,
+                    inconsistencies: inconsistencies,
+                    summary: {
+                        collectionSync: inconsistencies.filter(i => i.type === 'collection').length,
+                        scheduleStatus: inconsistencies.filter(i => i.type === 'schedule_status').length,
+                        naming: inconsistencies.filter(i => i.type === 'naming').length
+                    }
+                };
+                
+                return report;
+            }
+        };
+        
+        // 启动定时校验任务
+        function startConsistencyCheck() {
+            // 每5分钟执行一次全量检查
+            setInterval(() => {
+                const report = dataConsistencyChecker.generateReport();
+                if (report.totalInconsistencies > 0) {
+                    console.warn('数据一致性检查发现不一致项:', report);
+                    // 在实际项目中，这里应该发送到后端或显示给用户
+                }
+            }, 5 * 60 * 1000); // 5分钟
+        }
+        
+        // 页面加载完成后启动校验
+        document.addEventListener('DOMContentLoaded', function() {
+            startConsistencyCheck();
+            // 初始化独立状态存储
+            initializeScheduleStates();
+        });
+        
+        // 初始化调度状态
+        function initializeScheduleStates() {
+            // 为每个数据连接初始化状态存储
+            planConnections.forEach(conn => {
+                const currentState = scheduleStateManager.getConnectionState(conn.id);
+                // 如果本地存储中没有状态，使用默认值并保存
+                if (!scheduleStateManager.loadState(conn.id)) {
+                    scheduleStateManager.saveState(conn.id, conn.scheduleEnabled);
+                }
+            });
+        }
+        
+        // 验证数据一致性
+        function validateDataConsistency() {
+            const issues = [];
+            
+            // 1. 验证目录树名称与表管理数据一致性
+            const treeTables = document.querySelectorAll('[data-type="table"]');
+            treeTables.forEach(tableEl => {
+                const tableId = tableEl.getAttribute('data-id');
+                const treeName = tableEl.querySelector('span').textContent;
+                
+                // 查找对应的表管理数据
+                let foundInManagement = false;
+                Object.keys(tableManagementData).forEach(directoryId => {
+                    const tableData = tableManagementData[directoryId].find(t => t.id === tableId);
+                    if (tableData && tableData.name !== treeName) {
+                        issues.push({
+                            type: 'naming_mismatch',
+                            location: 'directory_tree',
+                            tableId: tableId,
+                            expected: tableData.name,
+                            actual: treeName
+                        });
+                    }
+                    if (tableData) foundInManagement = true;
+                });
+                
+                if (!foundInManagement) {
+                    issues.push({
+                        type: 'missing_in_management',
+                        location: 'directory_tree',
+                        tableId: tableId,
+                        message: '目录树中的表在表管理数据中未找到'
+                    });
+                }
+            });
+            
+            // 2. 验证调度状态一致性
+            Object.keys(tableManagementData).forEach(directoryId => {
+                tableManagementData[directoryId].forEach(table => {
+                    // 检查表是否在采集计划中
+                    let isInPlan = false;
+                    let planConnectionId = null;
+                    
+                    Object.keys(planTablesData).forEach(connId => {
+                        if (planTablesData[connId].some(planTable => planTable.id === table.id)) {
+                            isInPlan = true;
+                            planConnectionId = connId;
+                        }
+                    });
+                    
+                    // 根据是否在计划中判断预期状态
+                    let expectedStatus;
+                    if (!isInPlan) {
+                        expectedStatus = '未加入';
+                    } else {
+                        const connection = planConnections.find(conn => conn.id === planConnectionId);
+                        const storedState = scheduleStateManager.getConnectionState(planConnectionId);
+                        expectedStatus = storedState ? '已开启调度' : '未开启调度';
+                    }
+                    
+                    if (table.scheduleStatus !== expectedStatus) {
+                        issues.push({
+                            type: 'schedule_status_mismatch',
+                            location: 'table_management',
+                            tableId: table.id,
+                            tableName: table.name,
+                            expected: expectedStatus,
+                            actual: table.scheduleStatus
+                        });
+                    }
+                });
+            });
+            
+            // 3. 验证采集记录与表管理数据一致性
+            Object.keys(tableManagementData).forEach(directoryId => {
+                tableManagementData[directoryId].forEach(table => {
+                    const detailData = tableDetailData[table.id];
+                    if (detailData && detailData.metadataLogs.length > 0) {
+                        const latestLog = detailData.metadataLogs[0];
+                        if (table.lastCollectionResult !== latestLog.result || 
+                            table.lastCollectionTime !== latestLog.endTime) {
+                            issues.push({
+                                type: 'collection_data_mismatch',
+                                location: 'table_management',
+                                tableId: table.id,
+                                tableName: table.name,
+                                management: {
+                                    result: table.lastCollectionResult,
+                                    time: table.lastCollectionTime
+                                },
+                                collection: {
+                                    result: latestLog.result,
+                                    time: latestLog.endTime
+                                }
+                            });
+                        }
+                    }
+                });
+            });
+            
+            return issues;
+        }
+        
+        // 修复数据不一致问题
+        function fixDataInconsistencies() {
+            const issues = validateDataConsistency();
+            
+            issues.forEach(issue => {
+                switch(issue.type) {
+                    case 'naming_mismatch':
+                        // 更新目录树中的名称
+                        const tableEl = document.querySelector(`[data-type="table"][data-id="${issue.tableId}"]`);
+                        if (tableEl) {
+                            tableEl.querySelector('span').textContent = issue.expected;
+                        }
+                        break;
+                        
+                    case 'schedule_status_mismatch':
+                        // 更新表管理中的调度状态
+                        Object.keys(tableManagementData).forEach(directoryId => {
+                            const tableData = tableManagementData[directoryId].find(t => t.id === issue.tableId);
+                            if (tableData) {
+                                tableData.scheduleStatus = issue.expected;
+                            }
+                        });
+                        break;
+                        
+                    case 'collection_data_mismatch':
+                        // 同步采集记录到表管理数据
+                        dataSyncManager.syncCollectionData(issue.tableId);
+                        break;
+                }
+            });
+            
+            if (issues.length > 0) {
+                console.log(`修复了 ${issues.length} 个数据不一致问题`);
+                // 刷新表管理界面
+                updateTableManagementContent(currentDirectoryId);
+            }
+            
+            return issues.length;
+        }
+
+        function renderPlanSegmentTables(conn) {
+            const rows = (planTablesData[conn.id] || []).map(row => `
+                <tr class="list-row">
+                    <td class="px-4 py-2 border-b">
+                        <span class="table-cell-hover" data-jump-table-id="${row.id}" data-jump-table-name="${row.name}">${row.name}</span>
+                    </td>
+                    <td class="px-4 py-2 border-b">${row.dir}</td>
+                    <td class="px-4 py-2 border-b">${row.desc}</td>
+                </tr>
+            `).join('');
+            planSegContainer.innerHTML = `
+                <div class="overflow-x-auto">
+                    <table class="min-w-full border border-gray-300">
+                        <thead>
+                            <tr class="list-header">
+                                <th class="px-4 py-2 border-b text-left">逻辑表名称</th>
+                                <th class="px-4 py-2 border-b text-left">所在目录</th>
+                                <th class="px-4 py-2 border-b text-left">业务描述</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows || '<tr><td colspan="3" class="px-4 py-2 text-center text-gray-500">暂无数据</td></tr>'}</tbody>
+                    </table>
+                </div>
+            `;
+            // 绑定跳转
+            planSegContainer.querySelectorAll('[data-jump-table-id]').forEach(el => {
+                el.addEventListener('click', function() {
+                    const tableId = this.getAttribute('data-jump-table-id');
+                    const tableName = this.getAttribute('data-jump-table-name');
+                    if (planOverlay) planOverlay.classList.add('hidden');
+                    lastDirectoryId = currentDirectoryId;
+                    selectItem(tableId, 'table');
+                    openTableTab(tableId, tableName);
+                });
+            });
+        }
+
+        function renderPlanSegmentRuns(conn) {
+            const rows = (planRunsData[conn.id] || []).map((row, idx) => `
+                <tr class="list-row">
+                    <td class="px-4 py-2 border-b">${row.count}</td>
+                    <td class="px-4 py-2 border-b">${row.trigger}</td>
+                    <td class="px-4 py-2 border-b">${row.status}</td>
+                    <td class="px-4 py-2 border-b">
+                        <button class="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 show-plan-log-btn" 
+                                data-run-idx="${idx}">查看日志</button>
+                    </td>
+                    <td class="px-4 py-2 border-b">
+                        <button class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded" data-run-idx="${idx}">查看详情</button>
+                    </td>
+                </tr>
+            `).join('');
+            planSegContainer.innerHTML = `
+                <div class="overflow-x-auto">
+                    <table class="min-w-full border border-gray-300">
+                        <thead>
+                            <tr class="list-header">
+                                <th class="px-4 py-2 border-b text-left">采集计划表数量</th>
+                                <th class="px-4 py-2 border-b text-left">触发方式</th>
+                                <th class="px-4 py-2 border-b text-left">运行状态</th>
+                                <th class="px-4 py-2 border-b text-left">运行日志</th>
+                                <th class="px-4 py-2 border-b text-left">表采集详情</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows || '<tr><td colspan="5" class="px-4 py-2 text-center text-gray-500">暂无数据</td></tr>'}</tbody>
+                    </table>
+                </div>
+            `;
+            // 绑定"查看日志"按钮
+            planSegContainer.querySelectorAll('.show-plan-log-btn').forEach(el => {
+                el.addEventListener('click', function() {
+                    const idx = Number(this.getAttribute('data-run-idx'));
+                    const runData = (planRunsData[conn.id] || [])[idx];
+                    if (runData) {
+                        // 显示采集计划的运行日志
+                        const logContent = `采集计划运行日志：
+计划名称: ${conn.name}
+触发方式: ${runData.trigger}
+运行状态: ${runData.status}
+运行时间: ${new Date().toLocaleString()}
+运行结果: ${runData.log}
+
+详细日志:
+${runData.log}`;
+                        document.getElementById('run-log-content').textContent = logContent;
+                        document.getElementById('run-log-modal').classList.remove('hidden');
+                    }
+                });
+            });
+            
+            // 绑定"查看详情"
+            planSegContainer.querySelectorAll('[data-run-idx]:not(.show-plan-log-btn)').forEach(el => {
+                el.addEventListener('click', function() {
+                    const idx = Number(this.getAttribute('data-run-idx'));
+                    const details = (planRunsData[conn.id] || [])[idx]?.details || [];
+                    const rows = details.map(d => `
+                        <tr class="list-row">
+                            <td class="px-4 py-2 border-b">
+                                <span class="table-cell-hover" data-jump-table-id="${d.id}" data-jump-table-name="${d.name}" data-jump-target="metadata">${d.name}</span>
+                            </td>
+                            <td class="px-4 py-2 border-b">${d.database}</td>
+                            <td class="px-4 py-2 border-b">${d.physicalTable}</td>
+                            <td class="px-4 py-2 border-b">${d.endTime}</td>
+                            <td class="px-4 py-2 border-b">
+                                <span class="px-2 py-1 rounded text-xs ${getResultClass(d.result)}">${d.result}</span>
+                            </td>
+                        </tr>
+                    `).join('');
+                    runDetailContent.innerHTML = `
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full border border-gray-300">
+                                <thead>
+                                    <tr class="list-header">
+                                        <th class="px-4 py-2 border-b text-left">逻辑表名称</th>
+                                        <th class="px-4 py-2 border-b text-left">库/模式</th>
+                                        <th class="px-4 py-2 border-b text-left">物理表</th>
+                                        <th class="px-4 py-2 border-b text-left">采集结束时间</th>
+                                        <th class="px-4 py-2 border-b text-left">采集结果</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${rows || '<tr><td colspan="5" class="px-4 py-2 text-center text-gray-500">暂无数据</td></tr>'}</tbody>
+                            </table>
+                        </div>
+                    `;
+                    // 弹窗中的跳转
+                    runDetailContent.querySelectorAll('[data-jump-table-id]').forEach(a => {
+                        a.addEventListener('click', function() {
+                            const tableId = this.getAttribute('data-jump-table-id');
+                            const tableName = this.getAttribute('data-jump-table-name');
+                            runDetailModal.classList.add('hidden');
+                            planOverlay.classList.add('hidden');
+                            lastDirectoryId = currentDirectoryId;
+                            selectItem(tableId, 'table');
+                            openTableTab(tableId, tableName);
+                            // 打开“元数据采集记录”子标签
+                            const contentElement = document.getElementById(`${tableId}-tab`);
+                            if (contentElement) {
+                                const metaTab = contentElement.querySelector('[data-tab-name="metadata-log"]');
+                                if (metaTab) metaTab.click();
+                            }
+                        });
+                    });
+                    runDetailModal.classList.remove('hidden');
+                });
+            });
+        }
+
+        // 新增：处理文件夹复选框的逻辑
+        function handleFolderCheckbox(folderCheckbox) {
+            const folderId = folderCheckbox.getAttribute('data-id');
+            const childCheckboxes = document.querySelectorAll(`#${folderId}-content input[type="checkbox"]`);
+            
+            childCheckboxes.forEach(childCheckbox => {
+                childCheckbox.checked = folderCheckbox.checked;
+                // 如果子节点是文件夹，递归处理
+                if (childCheckbox.getAttribute('data-type') === 'folder-checkbox') {
+                    handleFolderCheckbox(childCheckbox);
+                }
+            });
+        }
+
+        // 新增：处理表复选框的逻辑
+        function handleTableCheckbox(tableCheckbox) {
+            const parentId = tableCheckbox.getAttribute('data-parent-id');
+            if (!parentId) return;
+            
+            const parentFolderCheckbox = document.querySelector(`[data-type="folder-checkbox"][data-id="${parentId}"]`);
+            if (!parentFolderCheckbox) return;
+
+            const siblingTableCheckboxes = document.querySelectorAll(`#${parentId}-content input[type="checkbox"][data-type="folder-checkbox"], #${parentId}-content input[type="checkbox"]:not([data-type="folder-checkbox"])`);
+            
+            const allChecked = Array.from(siblingTableCheckboxes).every(cb => cb.checked);
+            const noneChecked = Array.from(siblingTableCheckboxes).every(cb => !cb.checked);
+            
+            if (allChecked) {
+                parentFolderCheckbox.checked = true;
+                parentFolderCheckbox.indeterminate = false;
+            } else if (noneChecked) {
+                parentFolderCheckbox.checked = false;
+                parentFolderCheckbox.indeterminate = false;
+            } else {
+                parentFolderCheckbox.checked = false;
+                parentFolderCheckbox.indeterminate = true;
+            }
+        }
+
+        // 更新生成按钮文本
+        function updateGenerateButtonText() {
+            const selectedCount = document.querySelectorAll('#physical-table-list input[type="checkbox"]:checked:not([data-type="folder-checkbox"])').length;
+            const generateBtn = document.getElementById('generate-btn');
+            generateBtn.textContent = `生成 ${selectedCount} 张逻辑表`;
+        }
+
+        // 切换采集方式
+        function toggleCollectionMethod(method) {
+            const sqlConfigSection = document.getElementById('sql-config-section');
+            const tableSelectionSection = document.getElementById('table-selection-section');
+            
+            if (method === 'sql') {
+                // 显示SQL配置，隐藏表选择
+                sqlConfigSection.classList.remove('hidden');
+                tableSelectionSection.classList.add('hidden');
+            } else {
+                // 隐藏SQL配置，显示表选择
+                sqlConfigSection.classList.add('hidden');
+                tableSelectionSection.classList.remove('hidden');
+            }
+            
+            // 更新生成按钮状态
+            updateGenerateButtonState();
+        }
+
+        // 更新生成按钮状态
+        function updateGenerateButtonState() {
+            const generateBtn = document.getElementById('generate-btn');
+            const creationMethod = document.querySelector('input[name="creation-method"]:checked').value;
+            
+            if (creationMethod === 'sql') {
+                // SQL采集模式：检查SQL语句是否为空
+                const sqlStatement = document.getElementById('sql-statement').value.trim();
+                if (sqlStatement === '') {
+                    generateBtn.disabled = true;
+                    generateBtn.textContent = '请输入SQL语句';
+                    generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = '生成逻辑表';
+                    generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            } else {
+                // 表采集模式：检查是否选择了表
+                const selectedCount = document.querySelectorAll('#physical-table-list input[type="checkbox"]:checked:not([data-type="folder-checkbox"])').length;
+                if (selectedCount === 0) {
+                    generateBtn.disabled = true;
+                    generateBtn.textContent = '请选择物理表';
+                    generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = `生成 ${selectedCount} 张逻辑表`;
+                    generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }
+        }
+
+        // 表单校验
+        function validateForm() {
+            const creationMethod = document.querySelector('input[name="creation-method"]:checked').value;
+            
+            if (creationMethod === 'sql') {
+                // SQL采集模式校验
+                const sqlStatement = document.getElementById('sql-statement').value.trim();
+                if (sqlStatement === '') {
+                    showSuccessToast('请输入SQL语句', 'error');
+                    return false;
+                }
+                
+                // 检查数据连接是否选择（这里简化处理，实际应该有数据连接选择逻辑）
+                const connectionSelect = document.querySelector('select');
+                if (!connectionSelect || !connectionSelect.value) {
+                    showSuccessToast('请先选择数据连接', 'error');
+                    return false;
+                }
+                
+                return true;
+            } else {
+                // 表采集模式校验
+                const selectedCount = document.querySelectorAll('#physical-table-list input[type="checkbox"]:checked:not([data-type="folder-checkbox"])').length;
+                if (selectedCount === 0) {
+                    showSuccessToast('请选择至少一张物理表', 'error');
+                    return false;
+                }
+                return true;
+            }
+        }
+
+        // 生成逻辑表并添加到目录树
+        function generateLogicalTables() {
+            const creationMethod = document.querySelector('input[name="creation-method"]:checked').value;
+            const directorySelect = document.getElementById('directory-select');
+            const parentDirectoryId = directorySelect.value;
+            
+            // 找到正确的父容器来添加新表
+            const parentContainer = document.querySelector(`[data-type="folder"][data-id="${parentDirectoryId}"]`) ? document.getElementById(`${parentDirectoryId}-content`) : document.getElementById('root-directory').parentElement;
+            
+            if (creationMethod === 'sql') {
+                // SQL采集模式：生成基于SQL语句的逻辑表
+                const sqlStatement = document.getElementById('sql-statement').value.trim();
+                const newTableId = `logical-sql-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                const newTableName = `SQL查询表_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '')}`;
+                
+                const newTableData = {
+                    id: newTableId,
+                    name: newTableName,
+                    directory: directoryNames[parentDirectoryId],
+                    connection: "数据连接 A",
+                    updateTime: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-') + ' ' + new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+                    lastCollectionResult: "初始化",
+                    lastCollectionTime: "未采集",
+                    sqlStatement: sqlStatement // 保存SQL语句
+                };
+
+                // 添加到表管理数据
+                if (parentDirectoryId === 'root') {
+                    tableManagementData.root.push(newTableData);
+                } else {
+                    tableManagementData.root.push(newTableData);
+                    if (!tableManagementData[parentDirectoryId]) {
+                        tableManagementData[parentDirectoryId] = [];
+                    }
+                    tableManagementData[parentDirectoryId].push(newTableData);
+                }
+
+                // 添加新的表详情数据
+                tableDetailData[newTableId] = {
+                    dataPreview: [], // SQL查询表初始无数据预览
+                    fieldInfo: [], // SQL查询表初始无字段信息
+                    metadataLogs: getMetadataLogsForTable(newTableId, []),
+                    sqlStatement: sqlStatement
+                };
+
+                // 同步到采集计划管理
+                const targetConnId = mapConnectionNameToConnId(newTableData.connection);
+                if (!planTablesData[targetConnId]) planTablesData[targetConnId] = [];
+                planTablesData[targetConnId].push({ 
+                    id: newTableId, 
+                    name: newTableName, 
+                    dir: directoryNames[parentDirectoryId], 
+                    desc: '基于SQL查询生成的逻辑表' 
+                });
+
+                const newTableHtml = `
+                    <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="${newTableId}" data-parent="${parentDirectoryId}">
+                        <i class="fa fa-table text-green-600 mr-3"></i>
+                        <span>${newTableName}</span>
+                    </div>
+                `;
+                
+                parentContainer.insertAdjacentHTML('beforeend', newTableHtml);
+
+                // 为新元素添加事件监听器
+                const newTableElement = parentContainer.querySelector(`[data-id="${newTableId}"]`);
+                if (newTableElement) {
+                    newTableElement.addEventListener('click', function() {
+                        const tableId = this.getAttribute('data-id');
+                        const tableName = this.querySelector('span').textContent.replace(/<[^>]*>/g, '');
+                        lastDirectoryId = currentDirectoryId;
+                        selectItem(tableId, 'table');
+                        openTableTab(tableId, tableName);
+                    });
+                }
+
+                // 清空SQL语句
+                document.getElementById('sql-statement').value = '';
+                
+            } else {
+                // 表采集模式：原有的逻辑
+                const selectedCheckboxes = document.querySelectorAll('#physical-table-list input[type="checkbox"]:checked:not([data-type="folder-checkbox"])');
+                
+                selectedCheckboxes.forEach(checkbox => {
+                    const physicalTableName = checkbox.getAttribute('data-table-name');
+                    const newTableId = `logical-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                    const newTableName = `数据连接 A_${physicalTableName}`;
+                    const newTableData = {
+                        id: newTableId,
+                        name: newTableName,
+                        directory: directoryNames[parentDirectoryId],
+                        connection: "数据连接 A",
+                        updateTime: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-') + ' ' + new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+                        lastCollectionResult: "初始化",
+                        lastCollectionTime: "未采集"
+                    };
+
+                    // 修改：当所属目录为根目录时，只添加一次数据
+                    if (parentDirectoryId === 'root') {
+                        tableManagementData.root.push(newTableData);
+                    } else {
+                        // 如果所属目录不是根目录，则同时添加到根目录数据和所属目录数据中
+                        tableManagementData.root.push(newTableData);
+                        if (!tableManagementData[parentDirectoryId]) {
+                            tableManagementData[parentDirectoryId] = [];
+                        }
+                        tableManagementData[parentDirectoryId].push(newTableData);
+                    }
+
+                    // 添加新的表详情数据，使用与已有表相同的结构
+                    tableDetailData[newTableId] = {
+                        dataPreview: tableDetailData.table1.dataPreview,
+                        fieldInfo: tableDetailData.table1.fieldInfo,
+                        metadataLogs: getMetadataLogsForTable(newTableId, [])
+                    };
+
+                    // 同步到采集计划管理：加入 conn-1 的表配置（默认新建在 数据连接 A）
+                    const targetConnId = mapConnectionNameToConnId(newTableData.connection);
+                    if (!planTablesData[targetConnId]) planTablesData[targetConnId] = [];
+                    planTablesData[targetConnId].push({ id: newTableId, name: physicalTableName, dir: directoryNames[parentDirectoryId], desc: '' });
+
+                    const newTableHtml = `
+                        <div class="p-2 hover:bg-gray-100 cursor-pointer" data-type="table" data-id="${newTableId}" data-parent="${parentDirectoryId}">
+                            <i class="fa fa-table text-green-600 mr-3"></i>
+                            <span>${newTableName}</span>
+                        </div>
+                    `;
+                    
+                    // 将新表插入到正确的父容器中
+                    parentContainer.insertAdjacentHTML('beforeend', newTableHtml);
+
+                    // 为新元素添加事件监听器
+                    const newTableElement = parentContainer.querySelector(`[data-id="${newTableId}"]`);
+                    if (newTableElement) {
+                        newTableElement.addEventListener('click', function() {
+                            const tableId = this.getAttribute('data-id');
+                            const tableName = this.querySelector('span').textContent.replace(/<[^>]*>/g, ''); // 移除HTML标签
+                            lastDirectoryId = currentDirectoryId;
+                            selectItem(tableId, 'table');
+                            openTableTab(tableId, tableName);
+                        });
+                    }
+                });
+
+                // 重置勾选框和按钮文本
+                document.querySelectorAll('#physical-table-list input[type="checkbox"]').forEach(checkbox => {
+                    checkbox.checked = false;
+                    checkbox.indeterminate = false;
+                });
+            }
+            
+            updateGenerateButtonState();
+            
+            // 更新原始目录树状态（包含新添加的表）
+            saveOriginalTreeState();
+            
+            // 如果正在搜索，重新执行搜索以包含新表
+            if (isSearching && searchInput && searchInput.value.trim()) {
+                performSearch(searchInput.value.trim());
+            }
+            
+            // 切换回表管理页面并刷新表格
+            switchToTableManagementTab();
+            updateTableManagementContent(currentDirectoryId);
+        }
+    </script>
+</body></html>

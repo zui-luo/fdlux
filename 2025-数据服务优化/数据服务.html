@@ -1,0 +1,2697 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FineDataLink Prototype V3</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* --- 基础变量 --- */
+        :root {
+            --primary-color: #3370ff;
+            --primary-hover: #295ed9;
+            --sidebar-bg: #0f1b36;
+            --bg-color: #f5f6f7;
+            --white: #ffffff;
+            --text-main: #1f2329;
+            --text-secondary: #646a73;
+            --border-color: #dee0e3;
+            --success-green: #00b62a;
+            --disabled-bg: #f5f7fa;
+            --disabled-text: #c0c4cc;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: "Helvetica Neue", Helvetica, "PingFang SC", Arial, sans-serif;
+            font-size: 14px; color: var(--text-main); background-color: var(--bg-color);
+            height: 100vh; overflow: hidden; display: flex; flex-direction: column; padding-top: 40px;
+        }
+
+        /* --- 布局 --- */
+        .main-container { flex: 1; display: flex; overflow: hidden; }
+        
+        .main-sidebar { width: 64px; background: var(--sidebar-bg); display: flex; flex-direction: column; padding-top: 16px; flex-shrink: 0; z-index: 10; }
+        .nav-item { height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8f959e; cursor: pointer; font-size: 12px; gap: 4px; }
+        .nav-item.active { background: #1a2642; color: #fff; border-left: 3px solid var(--primary-color); }
+        .nav-item.active i { color: var(--primary-color); }
+        .nav-item i { font-size: 18px; }
+
+        .content-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        
+        .global-header { height: 48px; background: linear-gradient(to right, #fcfcfd, #eff4ff); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; flex-shrink: 0; z-index: 20; }
+        
+        .sub-nav-tabs { height: 48px; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--border-color); justify-content: space-between; background: var(--white); flex-shrink: 0; z-index: 15; }
+        .tab-item { margin-right: 24px; cursor: pointer; line-height: 46px; color: var(--text-secondary); font-weight: 500; position: relative; }
+        .tab-item.active { color: var(--primary-color); border-bottom: 2px solid var(--primary-color); }
+        .tab-actions { display: flex; align-items: center; gap: 12px; }
+        .tab-rule-btn { height: 32px; padding: 0 12px; border: 1px solid var(--border-color); background: white; border-radius: 4px; cursor: pointer; color: var(--text-main); display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+        .tab-rule-btn:hover { border-color: var(--primary-color); color: var(--primary-color); }
+
+        .bottom-container { flex: 1; display: flex; overflow: hidden; }
+        
+        .sub-sidebar { width: 260px; background: var(--white); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden; }
+        
+        .main-content { flex: 1; display: flex; flex-direction: column; background: var(--white); position: relative; overflow: hidden; }
+        .content-scroll { flex: 1; overflow-y: auto; padding: 24px; position: relative; }
+
+        /* --- 侧边栏与树 --- */
+        .list-header { padding: 12px 16px 8px; display: flex; justify-content: space-between; align-items: center; height: 48px;}
+        .list-title { font-weight: bold; font-size: 14px; }
+        .search-box { margin: 8px 16px; position: relative; }
+        .search-box input { width: 100%; height: 30px; border: 1px solid var(--border-color); border-radius: 4px; padding-left: 8px; font-size: 12px; outline: none; }
+        .tree-wrapper { flex: 1; overflow-y: auto; padding: 4px 0; }
+        
+        .tree-node { display: flex; align-items: center; padding: 7px 16px; cursor: pointer; font-size: 13px; color: var(--text-main); user-select: none; }
+        .tree-node:hover { background-color: #f2f3f5; }
+        .tree-node.active { background-color: #eef3fe; color: var(--primary-color); }
+        .indent-0 { padding-left: 16px; font-weight: 500; }
+        .indent-1 { padding-left: 38px; }
+        
+        .arrow { width: 14px; color: #999; font-size: 10px; transition: transform 0.2s; display: inline-block; text-align: center; margin-right: 2px; }
+        .arrow.down { transform: rotate(90deg); }
+        .icon-folder { color: #ffb800; margin-right: 6px; }
+        /* 应用列表可能还需要文件图标，但服务列表不需要了 */
+        .icon-file { color: #8f959e; margin-right: 6px; font-size: 12px; }
+        .api-badge-mini { font-size: 10px; background: #7c4dff; color: white; padding: 2px 4px; border-radius: 2px; margin-right: 6px; transform: scale(0.9); font-weight: normal;}
+        
+        .btn-new { background: var(--primary-color); color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+        .btn-new:hover { background: var(--primary-hover); }
+
+        /* --- 详情页组件 --- */
+        .detail-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .status-tag { border: 1px solid var(--success-green); color: var(--success-green); font-size: 12px; padding: 1px 6px; border-radius: 2px; font-weight: normal; margin-left: 8px; }
+        .status-tag.offline { border: 1px solid #c0c4cc; color: #c0c4cc; }
+        .api-tag-lg { background: #7b61ff; color: white; padding: 2px 6px; border-radius: 2px; font-size: 12px; margin-right: 6px; vertical-align: middle; }
+        .desc-text { color: #999; font-size: 12px; margin-top: 8px; line-height: 1.4; max-width: 800px;}
+        
+        .btn { height: 32px; padding: 0 12px; border: 1px solid var(--border-color); background: white; border-radius: 4px; cursor: pointer; color: var(--text-main); display: inline-flex; align-items: center; gap: 6px; font-size: 13px; margin-left: 8px; }
+        .btn:hover { border-color: var(--primary-color); color: var(--primary-color); }
+        .btn.primary { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+        .btn.primary:hover { background: var(--primary-hover); }
+        
+        /* 禁用状态按钮 */
+        .btn.disabled { background: var(--disabled-bg) !important; border-color: #e4e7ed !important; color: var(--disabled-text) !important; cursor: not-allowed; pointer-events: none; }
+
+        .section-title { margin: 24px 0 16px; font-weight: 500; font-size: 14px; display: flex; align-items: center; border-top: 1px solid var(--border-color); padding-top: 24px; }
+        .section-title:first-child { margin-top: -12px; border-top: none; padding-top: 0; }
+        .section-subtitle { margin: 20px 0 12px; font-weight: 500; font-size: 13px; display: flex; align-items: center; color: var(--text-main); }
+        .section-subtitle.with-border { border-top: 1px solid var(--border-color); padding-top: 20px; margin-top: 20px; }
+        .form-grid { display: grid; grid-template-columns: 100px 1fr; row-gap: 20px; font-size: 13px; margin-bottom: 20px; }
+        .form-label { color: var(--text-secondary); }
+        .form-val { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+        .blue-info-box { background: #eff4ff; padding: 16px; border-radius: 4px; margin-bottom: 24px; font-size: 13px; position: relative; }
+        .info-line { display: flex; margin-bottom: 6px; color: #666; }
+        .data-table { width: 100%; border: 1px solid #eee; border-radius: 4px; font-size: 13px; border-spacing: 0; background: white; }
+        .data-table th { background: white; padding: 10px 16px; text-align: left; font-weight: 500; color: #666; border-bottom: 1px solid #eee; }
+        .data-table td { background: white; padding: 12px 16px; border-bottom: 1px solid #eee; color: #333; }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover { background-color: #f5f7fa; }
+        .data-table tbody tr:hover td { background-color: #f5f7fa; }
+        .url-cell { position: relative; }
+        .url-cell-content { display: flex; align-items: center; gap: 8px; }
+        .copy-url-btn { display: none; color: var(--primary-color); cursor: pointer; font-size: 14px; padding: 4px; }
+        .data-table tbody tr:hover .copy-url-btn { display: inline-block; }
+        .copy-url-btn:hover { color: var(--primary-hover); }
+        
+        /* Toast提示样式 */
+        .toast { position: fixed; top: 100px; left: 50%; transform: translateX(-50%); background: white; color: var(--text-main); padding: 16px 20px; border-radius: 8px; font-size: 14px; z-index: 10000; pointer-events: none; opacity: 0; transition: opacity 0.3s; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); display: flex; align-items: center; gap: 12px; }
+        .toast.show { opacity: 1; }
+        .toast-icon { width: 24px; height: 24px; border-radius: 50%; background: #13c2c2; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .toast-icon i { color: white; font-size: 14px; }
+        .toast-text { color: var(--text-main); font-size: 14px; }
+        .link-blue { color: var(--primary-color); cursor: pointer; }
+        
+        /* 服务详情页新增样式 */
+        .service-content-box { background: #f5f7fa; padding: 16px; border-radius: 4px; margin-bottom: 24px; }
+        .detail-content-wrapper { padding: 24px; border-radius: 4px; margin-top: 20px; }
+        .detail-content-wrapper.status-online { background: linear-gradient(to bottom, #f0f9f4 0px, #f0f9f4 0px, #ffffff 520px, #ffffff 100%); }
+        .detail-content-wrapper.status-offline { background: linear-gradient(to bottom, #f5f5f5 0px, #f5f5f5 0px, #ffffff 520px, #ffffff 100%); }
+        .service-content-item { margin-bottom: 12px; font-size: 13px; }
+        .service-content-item:last-child { margin-bottom: 0; }
+        .service-content-label { color: var(--text-secondary); display: inline-block; width: 100px; }
+        .service-content-value { color: var(--text-main); }
+        .sort-rule { display: inline-block; margin-right: 12px; padding: 4px 8px; background: white; border-radius: 3px; font-size: 12px; }
+        .sort-rule .arrow { margin-right: 4px; }
+        .sort-rule .arrow.up { color: var(--primary-color); }
+        .sort-rule .arrow.down { color: #ff4d4f; }
+        .collapsible-header { cursor: pointer; user-select: none; color: var(--text-main); font-size: 13px; padding: 8px 0; }
+        .collapsible-header:hover { color: var(--primary-color); }
+        .collapsible-content { margin-top: 12px; }
+        .tab-container { margin-bottom: 16px; }
+        .tab-header { display: flex; border-bottom: 1px solid var(--border-color); }
+        .tab-item-inline { padding: 8px 16px; cursor: pointer; color: var(--text-secondary); font-size: 13px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+        .tab-item-inline.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+        .tab-content { margin-top: 16px; }
+        .param-table { width: 100%; border: 1px solid #eee; border-radius: 4px; font-size: 13px; border-spacing: 0; background: white; }
+        .param-table th { background: white; padding: 10px 16px; text-align: left; font-weight: 500; color: #666; border-bottom: 1px solid #eee; }
+        .param-table td { background: white; padding: 10px 16px; border-bottom: 1px solid #eee; color: #333; }
+        .param-table tr:last-child td { border-bottom: none; }
+        .param-type { display: inline-block; padding: 2px 6px; background: #f0f0f0; border-radius: 2px; font-size: 11px; font-family: monospace; }
+        .param-type.numeric { background: #e6f7ff; color: #1890ff; }
+        .param-type.boolean { background: #fff7e6; color: #fa8c16; }
+        .param-type.text { background: #f6ffed; color: #52c41a; }
+        .bind-arrow { color: var(--primary-color); margin: 0 4px; }
+        .json-code { background: #f5f5f5; padding: 16px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.6; color: #333; white-space: pre-wrap; overflow-x: auto; }
+        .unbind-btn { background: #ff4d4f; color: white; border: none; padding: 4px 12px; border-radius: 3px; font-size: 12px; cursor: pointer; }
+        .unbind-btn:hover { background: #ff7875; }
+        .add-app-btn { background: #eef3fe; color: var(--primary-color); border: 1px dashed var(--primary-color); padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+        .add-app-btn:hover { background: #d6e4ff; }
+
+        .hidden { display: none !important; }
+        
+        /* --- 弹窗样式 --- */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 300; display: flex; align-items: center; justify-content: center; }
+        .modal-box { background: #fff; width: 600px; height: 500px; border-radius: 4px; display: flex; flex-direction: column; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border-color); font-weight: bold; font-size: 16px; display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { flex: 1; overflow-y: auto; padding: 10px 0; }
+        .modal-footer { padding: 16px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 12px; }
+        .checkbox-row { padding: 8px 20px; display: flex; align-items: center; cursor: pointer; }
+        .checkbox-row:hover { background-color: #f5f7fa; }
+        .checkbox-custom { width: 16px; height: 16px; border: 1px solid #ccc; border-radius: 2px; margin-right: 10px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        /* Checkbox Checked State */
+        .checkbox-row.checked .checkbox-custom { background-color: var(--primary-color); border-color: var(--primary-color); }
+        .checkbox-row.checked .checkbox-custom::after { content: '\2714'; color: white; font-size: 12px; }
+        
+        .modal-folder { padding: 8px 20px; font-weight: 500; display: flex; align-items: center; cursor: pointer; }
+        .modal-children { margin-left: 24px; /* simple indent for modal */ }
+        
+        /* 新建应用弹窗样式 */
+        .modal-form { padding: 0 20px; }
+        .form-item { margin-bottom: 20px; }
+        .form-item-label { display: block; margin-bottom: 8px; color: var(--text-secondary); font-size: 13px; }
+        .form-item-input { width: 100%; height: 32px; border: 1px solid var(--border-color); border-radius: 4px; padding: 0 12px; font-size: 13px; outline: none; }
+        .form-item-input:focus { border-color: var(--primary-color); }
+        .form-item-textarea { width: 100%; min-height: 80px; border: 1px solid var(--border-color); border-radius: 4px; padding: 8px 12px; font-size: 13px; outline: none; resize: vertical; font-family: inherit; }
+        .form-item-textarea:focus { border-color: var(--primary-color); }
+        .form-item-select { width: 100%; height: 32px; border: 1px solid var(--border-color); border-radius: 4px; padding: 0 12px; font-size: 13px; outline: none; background: white; cursor: pointer; }
+        .form-item-select:focus { border-color: var(--primary-color); }
+        .form-item-path { background: var(--disabled-bg); color: var(--text-secondary); cursor: not-allowed; }
+        .radio-group { display: flex; flex-direction: column; gap: 12px; }
+        .radio-item { display: flex; align-items: center; cursor: pointer; }
+        .radio-custom { width: 16px; height: 16px; border: 1px solid #ccc; border-radius: 50%; margin-right: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+        .radio-item.checked .radio-custom { border-color: var(--primary-color); }
+        .radio-item.checked .radio-custom::after { content: ''; width: 8px; height: 8px; background: var(--primary-color); border-radius: 50%; }
+        .radio-label { font-size: 13px; color: var(--text-main); }
+        .help-icon { margin-left: 4px; color: #999; cursor: help; }
+        
+        /* 功能场景卡片样式 */
+        .scenario-cards { display: flex; gap: 16px; margin-top: 8px; }
+        .scenario-card { position: relative; border: 1px solid var(--border-color); border-radius: 4px; padding: 16px; cursor: pointer; transition: all 0.2s; flex: 1; background: white; }
+        .scenario-card:hover:not(.disabled) { border-color: var(--primary-color); }
+        .scenario-card.checked { border-color: var(--primary-color); border-width: 2px; }
+        .scenario-card.disabled { background: var(--disabled-bg); cursor: not-allowed; opacity: 0.6; }
+        .scenario-card-icon { width: 40px; height: 40px; border-radius: 4px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+        .scenario-card-content { flex: 1; }
+        .scenario-card-title { font-size: 14px; font-weight: 500; color: var(--text-main); margin-bottom: 6px; }
+        .scenario-card-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+        .scenario-card-check { position: absolute; bottom: 12px; right: 12px; width: 20px; height: 20px; display: none; }
+        .scenario-card.checked .scenario-card-check { display: block; }
+        
+        /* 敬请期待样式 */
+        .coming-soon-section { margin-top: 8px; }
+        .coming-soon-header { cursor: pointer; color: var(--text-main); font-size: 13px; padding: 8px 0; user-select: none; }
+        .coming-soon-header:hover { color: var(--primary-color); }
+        .coming-soon-content { padding: 12px 0; color: var(--text-secondary); font-size: 12px; }
+        
+        /* B方案应用详情页样式 */
+        .app-detail-form-box { border: 1px solid var(--primary-color); border-radius: 4px; padding: 20px; margin-bottom: 24px; position: relative; }
+        .app-detail-form-box.normal { border: none; background: #f5f7fa; }
+        .app-detail-form-item { margin-bottom: 20px; }
+        .app-detail-form-item:last-child { margin-bottom: 0; }
+        .app-detail-form-label { display: block; margin-bottom: 8px; color: var(--text-secondary); font-size: 13px; font-weight: 500; }
+        .app-detail-path-input { width: 100%; height: 32px; border: 1px solid var(--border-color); border-radius: 4px; padding: 0 12px; font-size: 13px; outline: none; display: flex; align-items: center; background: white; }
+        .app-detail-path-input:focus { border-color: var(--primary-color); }
+        .app-detail-path-input.readonly { background: var(--disabled-bg); cursor: not-allowed; }
+        .app-detail-path-prefix { color: #ff8800; }
+        .app-detail-path-uuid { color: var(--text-main); }
+        .app-detail-id-text { margin-top: 8px; font-size: 12px; color: var(--text-secondary); }
+        .app-detail-value-text { font-size: 13px; color: var(--text-main); }
+        .app-detail-radio-group-horizontal { display: flex; gap: 24px; }
+        .app-detail-radio-item { display: flex; align-items: center; cursor: pointer; }
+        .app-detail-radio-item.disabled { cursor: not-allowed; opacity: 0.6; }
+        .app-detail-radio-custom { width: 16px; height: 16px; border: 1px solid #ccc; border-radius: 50%; margin-right: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+        .app-detail-radio-item.checked .app-detail-radio-custom { border-color: var(--primary-color); }
+        .app-detail-radio-item.checked .app-detail-radio-custom::after { content: ''; width: 8px; height: 8px; background: var(--primary-color); border-radius: 50%; }
+        .app-detail-radio-label { font-size: 13px; color: var(--text-main); }
+        .app-detail-basic-info { margin-bottom: 20px; }
+        .app-detail-basic-line { display: flex; margin-bottom: 8px; font-size: 13px; color: var(--text-main); }
+        .app-detail-basic-line:last-child { margin-bottom: 0; }
+        .app-detail-basic-label { width: 80px; color: var(--text-secondary); }
+        .app-detail-basic-value { flex: 1; }
+        .app-detail-actions { display: flex; gap: 12px; margin-top: 24px; }
+        .app-detail-edit-btn { position: absolute; top: 20px; right: 20px; }
+        
+        /* A/B测试切换按钮 */
+        .ab-switcher { position: fixed; top: 0; left: 0; right: 0; height: 40px; background: #1f2329; display: flex; align-items: center; justify-content: center; gap: 12px; z-index: 1000; }
+        .ab-switcher-label { color: #fff; font-size: 12px; }
+        .ab-toggle { display: flex; background: #2d3339; border-radius: 4px; padding: 2px; }
+        .ab-toggle-btn { padding: 6px 16px; border: none; background: transparent; color: #8f959e; cursor: pointer; border-radius: 3px; font-size: 12px; transition: all 0.2s; }
+        .ab-toggle-btn.active { background: var(--primary-color); color: #fff; }
+        .ab-toggle-btn:hover:not(.active) { color: #fff; }
+        
+        /* 编辑页面样式 */
+        .service-edit-page { position: fixed; top: 88px; left: 64px; right: 0; bottom: 0; background: var(--white); z-index: 200; display: flex; flex-direction: column; overflow: hidden; }
+        .edit-header { height: 48px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; padding: 0 20px; flex-shrink: 0; }
+        .edit-header-left { display: flex; align-items: center; gap: 16px; flex: 1; }
+        .edit-back-btn { cursor: pointer; color: var(--text-main); font-size: 16px; }
+        .edit-service-name { font-size: 16px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+        .edit-service-name-input { border: none; outline: none; font-size: 16px; font-weight: 500; padding: 4px 8px; border-radius: 4px; }
+        .edit-service-name-input:focus { background: #f5f7fa; border: 1px solid var(--primary-color); }
+        .edit-header-right { color: var(--primary-color); cursor: pointer; font-size: 13px; }
+        .edit-breadcrumb { height: 60px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; padding: 0 20px; flex-shrink: 0; font-size: 20px; color: var(--text-secondary); }
+        .edit-breadcrumb-separator { margin: 0 12px; color: var(--text-secondary); }
+        .edit-breadcrumb-step { display: flex; align-items: center; gap: 12px; color: var(--text-secondary); }
+        .edit-breadcrumb-step-number { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 500; background: #e4e7ed; color: #606266; }
+        .edit-breadcrumb-step.active { color: var(--primary-color); }
+        .edit-breadcrumb-step.active .edit-breadcrumb-step-number { background: var(--primary-color); color: white; }
+        .edit-content { flex: 1; overflow-y: auto; padding: 24px; }
+        .edit-footer { height: 60px; border-top: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; flex-shrink: 0; }
+        .edit-footer-left { display: flex; gap: 12px; }
+        .edit-radio-group { display: flex; gap: 24px; }
+        .edit-radio-item { display: flex; align-items: center; cursor: pointer; }
+        .edit-radio-custom { width: 16px; height: 16px; border: 1px solid #ccc; border-radius: 50%; margin-right: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+        .edit-radio-item.checked .edit-radio-custom { border-color: var(--primary-color); }
+        .edit-radio-item.checked .edit-radio-custom::after { content: ''; width: 8px; height: 8px; background: var(--primary-color); border-radius: 50%; }
+        .edit-input { width: 100%; height: 32px; border: 1px solid var(--border-color); border-radius: 4px; padding: 0 12px; font-size: 13px; outline: none; }
+        .edit-input:focus { border-color: var(--primary-color); }
+        .edit-input-inline { display: inline-flex; align-items: center; gap: 8px; }
+        .edit-input-with-prefix { display: flex; align-items: center; width: 470px; height: 32px; border: 1px solid var(--border-color); border-radius: 4px; padding: 0; background: white; }
+        .edit-input-with-prefix:focus-within { border-color: var(--primary-color); }
+        .edit-input-prefix { padding: 0 12px; color: #ff8800; font-size: 13px; white-space: nowrap; }
+        .edit-input-with-prefix input { border: none; outline: none; flex: 1; height: 100%; padding: 0 12px 0 0; font-size: 13px; background: transparent; }
+        .edit-json-editor { background: #f5f5f5; padding: 16px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.6; color: #333; white-space: pre-wrap; min-height: 200px; border: 1px solid var(--border-color); }
+        .edit-json-editor:focus { border-color: var(--primary-color); background: white; }
+        
+        /* 响应内容可视化编辑器样式 */
+        .response-content-editor { width: 100%; }
+        .response-json-wrapper { font-family: 'Courier New', monospace; font-size: 13px; border: 1px solid var(--border-color); border-radius: 4px; padding: 12px; background: white; }
+        .response-json-brace { color: var(--text-main); padding: 0 4px; }
+        .response-field-row { display: flex; align-items: center; padding: 6px 0; padding-left: 20px; }
+        .response-field-key { min-width: 140px; font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-main); }
+        .response-field-value { flex: 1; display: flex; align-items: center; gap: 8px; }
+        .response-value-pill { display: inline-flex; align-items: center; gap: 4px; background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 12px; padding: 4px 12px; font-size: 12px; color: #52c41a; cursor: pointer; }
+        .response-value-pill i { font-size: 10px; }
+        .response-field-type { min-width: 80px; font-size: 12px; color: var(--text-secondary); }
+        .response-field-actions { display: flex; align-items: center; gap: 12px; min-width: 80px; justify-content: flex-end; }
+        .response-field-actions i { color: #999; cursor: pointer; font-size: 14px; }
+        .response-field-actions i:hover { color: var(--primary-color); }
+        .response-add-btn { margin-top: 8px; margin-left: 20px; width: 32px; height: 32px; border-radius: 4px; background: var(--primary-color); color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+        .response-add-btn:hover { background: var(--primary-hover); }
+    </style>
+</head>
+<body>
+
+    <!-- A/B测试切换器 -->
+    <div class="ab-switcher">
+        <span class="ab-switcher-label">测试方案：</span>
+        <div class="ab-toggle">
+            <button class="ab-toggle-btn active" id="ab-btn-a" onclick="UI.switchABTest('A')">A方案</button>
+            <button class="ab-toggle-btn" id="ab-btn-b" onclick="UI.switchABTest('B')">B方案</button>
+        </div>
+    </div>
+
+    <!-- 主容器 -->
+    <div class="main-container">
+        <!-- 左侧主侧栏 -->
+        <aside class="main-sidebar">
+            <div class="nav-item"><i class="fa-solid fa-gauge-high"></i><span>运维</span></div>
+            <div class="nav-item"><i class="fa-solid fa-diagram-project"></i><span>管道</span></div>
+            <div class="nav-item"><i class="fa-solid fa-code"></i><span>开发</span></div>
+            <div class="nav-item active"><i class="fa-solid fa-server"></i><span>服务</span></div>
+        </aside>
+
+        <!-- 内容区域 -->
+        <div class="content-wrapper">
+            <!-- 顶部Header -->
+            <div class="global-header">
+                <div style="display:flex; align-items:center; color:var(--primary-color); font-weight:bold; font-size:16px;">
+                    <i class="fa-solid fa-folder-tree" style="margin-right:8px;"></i> FineDataLink
+                </div>
+                <div style="font-size:12px; color:#666;"><i class="fa fa-user-circle"></i> 管理员</div>
+            </div>
+
+            <!-- Tab栏（横向拉通） -->
+            <div class="sub-nav-tabs">
+                <div style="display: flex; align-items: center;">
+                    <div class="tab-item active" id="tab-service" onclick="UI.switchTab('service')">服务列表</div>
+                    <div class="tab-item" id="tab-app" onclick="UI.switchTab('app')">应用列表</div>
+                </div>
+                <div class="tab-actions">
+                    <button class="tab-rule-btn">
+                        <i class="fa fa-cog"></i> 规则管理
+                    </button>
+                </div>
+            </div>
+
+            <!-- 底部容器（侧边栏+内容区） -->
+            <div class="bottom-container">
+                <aside class="sub-sidebar">
+                    <!-- 服务列表 (新增了新建按钮) -->
+                    <div id="sidebar-service" style="display:flex; flex-direction:column; flex:1;">
+                        <div class="list-header">
+                            <span class="list-title">服务列表</span>
+                            <!-- Change 1: Add New Button -->
+                            <button class="btn-new" onclick="UI.openNewServiceModal()"><i class="fa fa-plus"></i> 新建</button>
+                        </div>
+                        <div class="search-box"><input type="text" placeholder="搜索API/文件夹" oninput="UI.onSearch(this.value, 'service')"></div>
+                        <div class="tree-wrapper" id="tree-service"></div>
+                    </div>
+
+                    <!-- 应用列表 -->
+                    <div id="sidebar-app" class="hidden" style="display:flex; flex-direction:column; flex:1;">
+                        <div class="list-header">
+                            <span class="list-title">应用列表</span>
+                            <button class="btn-new" onclick="UI.openNewAppModal()"><i class="fa fa-plus"></i> 新建</button>
+                        </div>
+                        <div class="search-box"><input type="text" placeholder="搜索应用/文件夹" oninput="UI.onSearch(this.value, 'app')"></div>
+                        <div class="tree-wrapper" id="tree-app"></div>
+                    </div>
+                </aside>
+
+                <!-- 内容区 -->
+                <div class="main-content">
+                    <div class="content-scroll" id="content-area"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 绑定服务弹窗 -->
+    <div id="bind-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div class="modal-header">
+                <span>选择绑定服务</span>
+                <i class="fa fa-times" style="cursor:pointer; font-weight:normal; color:#999;" onclick="UI.closeBindModal()"></i>
+            </div>
+            <div class="modal-body" id="modal-tree-root">
+                <!-- 树形内容由 JS 渲染 -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="UI.closeBindModal()">取消</button>
+                <button class="btn primary" onclick="UI.saveBindings()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 绑定应用弹窗 -->
+    <div id="bind-app-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div class="modal-header">
+                <span>选择绑定应用</span>
+                <i class="fa fa-times" style="cursor:pointer; font-weight:normal; color:#999;" onclick="UI.closeBindAppModal()"></i>
+            </div>
+            <div class="modal-body" id="modal-app-tree-root">
+                <!-- 树形内容由 JS 渲染 -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="UI.closeBindAppModal()">取消</button>
+                <button class="btn primary" onclick="UI.saveAppBindings()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建应用弹窗 -->
+    <div id="new-app-modal" class="modal-overlay hidden">
+        <div class="modal-box" style="height: auto; max-height: 90vh;">
+            <div class="modal-header">
+                <span>新建应用</span>
+                <i class="fa fa-times" style="cursor:pointer; font-weight:normal; color:#999;" onclick="UI.closeNewAppModal()"></i>
+            </div>
+            <div class="modal-body">
+                <div class="modal-form">
+                    <div class="form-item">
+                        <label class="form-item-label">所属目录</label>
+                        <select class="form-item-select" id="new-app-folder">
+                            <option value="all">所有应用</option>
+                        </select>
+                    </div>
+                    <div class="form-item">
+                        <label class="form-item-label">名称</label>
+                        <input type="text" class="form-item-input" id="new-app-name" placeholder="请输入应用名称" value="绑定应用test">
+                    </div>
+                    <div class="form-item">
+                        <label class="form-item-label">描述</label>
+                        <textarea class="form-item-textarea" id="new-app-desc" placeholder="请输入"></textarea>
+                    </div>
+                    <div class="form-item">
+                        <label class="form-item-label">应用路径</label>
+                        <input type="text" class="form-item-input form-item-path" id="new-app-path" readonly>
+                    </div>
+                    <div class="form-item">
+                        <label class="form-item-label">应用认证方式</label>
+                        <div class="radio-group" id="new-app-auth">
+                            <div class="radio-item" data-value="appcode">
+                                <div class="radio-custom"></div>
+                                <span class="radio-label">AppCode</span>
+                            </div>
+                            <div class="radio-item" data-value="digest">
+                                <div class="radio-custom"></div>
+                                <span class="radio-label">摘要签名 <i class="fa fa-question-circle help-icon"></i></span>
+                            </div>
+                            <div class="radio-item" data-value="jiandaoyun">
+                                <div class="radio-custom"></div>
+                                <span class="radio-label">简道云推送认证</span>
+                            </div>
+                            <div class="radio-item checked" data-value="none">
+                                <div class="radio-custom"></div>
+                                <span class="radio-label">无认证</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="UI.closeNewAppModal()">取消</button>
+                <button class="btn primary" onclick="UI.saveNewApp()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建服务弹窗 -->
+    <div id="new-service-modal" class="modal-overlay hidden">
+        <div class="modal-box" style="height: auto; max-height: 90vh; width: 600px;">
+            <div class="modal-header">
+                <span>新建服务</span>
+                <i class="fa fa-times" style="cursor:pointer; font-weight:normal; color:#999;" onclick="UI.closeNewServiceModal()"></i>
+            </div>
+            <div class="modal-body">
+                <div class="modal-form">
+                    <div class="form-item">
+                        <label class="form-item-label">所属目录</label>
+                        <select class="form-item-select" id="new-service-folder">
+                            <option value="all">所有服务</option>
+                        </select>
+                    </div>
+                    <div class="form-item">
+                        <label class="form-item-label">名称</label>
+                        <input type="text" class="form-item-input" id="new-service-name" placeholder="请输入" value="接口服务170">
+                    </div>
+                    <div class="form-item">
+                        <label class="form-item-label">描述</label>
+                        <textarea class="form-item-textarea" id="new-service-desc" placeholder="请输入"></textarea>
+                    </div>
+                    <div class="form-item">
+                        <label class="form-item-label">选择功能场景</label>
+                        <div class="scenario-cards">
+                            <div class="scenario-card checked" data-value="query" id="scenario-query">
+                                <div class="scenario-card-icon" style="background: #3370ff;">
+                                    <i class="fa fa-search" style="color: white;"></i>
+                                </div>
+                                <div class="scenario-card-content">
+                                    <div class="scenario-card-title">数据查询</div>
+                                    <div class="scenario-card-desc">指定数据源查询数据,返回行列格式的数据</div>
+                                </div>
+                                <div class="scenario-card-check">
+                                    <i class="fa fa-check" style="color: #3370ff;"></i>
+                                </div>
+                            </div>
+                            <div class="scenario-card disabled" data-value="receive" id="scenario-receive">
+                                <div class="scenario-card-icon" style="background: #c0c4cc;">
+                                    <i class="fa fa-arrow-down" style="color: white;"></i>
+                                </div>
+                                <div class="scenario-card-content">
+                                    <div class="scenario-card-title">数据接收</div>
+                                    <div class="scenario-card-desc">接收上游下发和简道云推送的数据,解析后写入数据库</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-item">
+                        <div class="coming-soon-section">
+                            <div class="coming-soon-header" onclick="UI.toggleComingSoon()">
+                                <span>▶ 敬请期待</span>
+                            </div>
+                            <div class="coming-soon-content hidden" id="coming-soon-content">
+                                <!-- 敬请期待的内容 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="UI.closeNewServiceModal()">取消</button>
+                <button class="btn primary" onclick="UI.saveNewService()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 工具函数 ---
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        /**
+         * 生成完整URL
+         * @param {string} appPath - 应用路径（应用详情页的「应用路径」字段）
+         * @param {string} apiPath - API路径（服务详情页的「API路径」字段，去掉"应用路径"前缀后的部分）
+         * @returns {string} 完整URL
+         * 
+         * 完整URL结构：
+         * "http://project.fanruan.com:8087/webroot/" + 应用路径 + API路径
+         * 
+         * 示例：
+         * - 应用路径: "service/publish/core-01"
+         * - API路径: "/1234"
+         * - 完整URL: "http://project.fanruan.com:8087/webroot/service/publish/core-01/1234"
+         */
+        function generateFullUrl(appPath, apiPath) {
+            const baseUrl = 'http://project.fanruan.com:8087/webroot/';
+            // 确保应用路径不以/开头，API路径以/开头
+            const normalizedAppPath = appPath ? appPath.replace(/^\/+/, '') : '';
+            const normalizedApiPath = apiPath ? (apiPath.startsWith('/') ? apiPath : '/' + apiPath) : '/api';
+            return baseUrl + normalizedAppPath + normalizedApiPath;
+        }
+
+        // --- 数据 ---
+        const SERVICE_DATA = [
+            { id: 'f1', name: '财务服务组', type: 'folder', children: [
+                { 
+                    id: 's1', 
+                    name: '示例服务', 
+                    type: 'service', 
+                    status: 'API已上线', 
+                    path: '/1234', 
+                    method: 'GET',
+                    desc: '禁止频繁调用,每天调用上限50次,超过上限会受到频率拦截文案超长占位文案超长占位...',
+                    dataSource: 'MySQL · 数据连接1',
+                    configMethod: 'SQL',
+                    sortRules: [
+                        { level: 1, field: 'age', direction: 'up', type: '#' },
+                        { level: 2, field: 'name', direction: 'up', type: 'T' },
+                        { level: 3, field: 'price', direction: 'down', type: '#' }
+                    ],
+                    requestLimit: 10000,
+                    pagination: true,
+                    timeout: 10000,
+                    boundAppIds: [], // 绑定的应用ID数组（会在初始化时从应用的 bindings 自动生成）
+                    boundApps: [], // 显示用的绑定应用列表（会在初始化时从 boundAppIds 自动生成）
+                    requestParams: [
+                        { name: 'aaa', type: 'numeric', required: true, bindParam: 'aaa' },
+                        { name: 'pageNum', type: 'numeric', required: true, bindParam: 'pageNum' },
+                        { name: 'pageSize', type: 'numeric', required: true, bindParam: 'pageSize' },
+                        { name: 'returnTotalNum', type: 'boolean', required: false, defaultValue: 'true', bindParam: 'returnTotalNum' }
+                    ],
+                    responseFormat: 'JSON',
+                    responseJson: `{
+  "errCode": "{x}code 文本 //流程运行结果-代码",
+  "message": "{x}message 文本 //流程运行结果-信息输出",
+  "data": "{x}数据查询.output 数组",
+  "totalNum": "{x}totalNum 数值 //分页变量-SQL查询总数据量,当请求参数returnTotalNum的",
+  "pageSize": "{x}pageSize 数值 //分页变量-单页大小"
+}`
+                },
+                { 
+                    id: 's2', 
+                    name: '财务日报表服务', 
+                    type: 'service', 
+                    status: 'API已上线', 
+                    path: '/report/daily', 
+                    method: 'POST',
+                    desc: '每日财务数据汇总报表,支持多维度查询和导出功能',
+                    dataSource: 'MySQL · 财务数据库',
+                    configMethod: 'SQL',
+                    sortRules: [
+                        { level: 1, field: 'date', direction: 'down', type: 'T' },
+                        { level: 2, field: 'amount', direction: 'down', type: '#' }
+                    ],
+                    requestLimit: 5000,
+                    pagination: true,
+                    timeout: 15000,
+                    boundAppIds: [], // 绑定的应用ID数组（会在初始化时从应用的 bindings 自动生成）
+                    boundApps: [], // 显示用的绑定应用列表（会在初始化时从 boundAppIds 自动生成）
+                    requestParams: [
+                        { name: 'startDate', type: 'text', required: true, bindParam: 'startDate' },
+                        { name: 'endDate', type: 'text', required: true, bindParam: 'endDate' },
+                        { name: 'department', type: 'text', required: false, bindParam: 'department' }
+                    ],
+                    responseFormat: 'JSON',
+                    responseJson: `{
+  "code": 200,
+  "data": {
+    "reportList": "{x}报表数据.output 数组",
+    "totalAmount": "{x}totalAmount 数值",
+    "summary": "{x}summary 文本"
+  }
+}`
+                }
+            ]},
+            { id: 'f2', name: '人力资源组', type: 'folder', children: [
+                { 
+                    id: 's3', 
+                    name: '员工信息查询服务', 
+                    type: 'service', 
+                    status: 'API已上线', 
+                    path: '/hr/user', 
+                    method: 'GET',
+                    desc: '查询员工基本信息,包括姓名、部门、职位等详细信息',
+                    dataSource: 'MySQL · HR数据库',
+                    configMethod: 'SQL',
+                    sortRules: [
+                        { level: 1, field: 'employeeId', direction: 'up', type: '#' }
+                    ],
+                    requestLimit: 20000,
+                    pagination: true,
+                    timeout: 8000,
+                    boundAppIds: [], // 绑定的应用ID数组（会在初始化时从应用的 bindings 自动生成）
+                    boundApps: [], // 显示用的绑定应用列表（会在初始化时从 boundAppIds 自动生成）
+                    requestParams: [
+                        { name: 'employeeId', type: 'text', required: false, bindParam: 'employeeId' },
+                        { name: 'department', type: 'text', required: false, bindParam: 'department' },
+                        { name: 'pageNum', type: 'numeric', required: true, bindParam: 'pageNum' },
+                        { name: 'pageSize', type: 'numeric', required: true, bindParam: 'pageSize' }
+                    ],
+                    responseFormat: 'JSON',
+                    responseJson: `{
+  "success": true,
+  "employees": "{x}员工列表.output 数组",
+  "total": "{x}total 数值",
+  "pageNum": "{x}pageNum 数值",
+  "pageSize": "{x}pageSize 数值"
+}`
+                },
+                { 
+                    id: 's4', 
+                    name: '薪资计算服务', 
+                    type: 'service', 
+                    status: 'API未上线', 
+                    path: '/hr/salary', 
+                    method: 'POST',
+                    desc: '计算员工薪资,包括基本工资、绩效奖金、扣款等',
+                    dataSource: 'MySQL · 薪资数据库',
+                    configMethod: 'SQL',
+                    sortRules: [
+                        { level: 1, field: 'month', direction: 'down', type: 'T' },
+                        { level: 2, field: 'totalSalary', direction: 'down', type: '#' }
+                    ],
+                    requestLimit: 1000,
+                    pagination: false,
+                    timeout: 20000,
+                    boundAppIds: [], // 绑定的应用ID数组（用于数据同步）
+                    boundApps: [],
+                    requestParams: [
+                        { name: 'month', type: 'text', required: true, bindParam: 'month' },
+                        { name: 'employeeIds', type: 'text', required: false, bindParam: 'employeeIds' }
+                    ],
+                    responseFormat: 'JSON',
+                    responseJson: `{
+  "code": "{x}code 数值",
+  "message": "{x}message 文本",
+  "salaryList": "{x}薪资数据.output 数组"
+}`
+                }
+            ]},
+            { id: 'f3', name: '供应链组', type: 'folder', children: [
+                { 
+                    id: 's5', 
+                    name: '库存查询服务', 
+                    type: 'service', 
+                    status: 'API已上线', 
+                    path: '/scm/stock', 
+                    method: 'GET',
+                    desc: '实时查询商品库存信息,支持多仓库、多SKU查询',
+                    dataSource: 'MySQL · 库存数据库',
+                    configMethod: 'SQL',
+                    sortRules: [
+                        { level: 1, field: 'warehouse', direction: 'up', type: 'T' },
+                        { level: 2, field: 'stock', direction: 'up', type: '#' }
+                    ],
+                    requestLimit: 30000,
+                    pagination: true,
+                    timeout: 5000,
+                    boundAppIds: [], // 绑定的应用ID数组（会在初始化时从应用的 bindings 自动生成）
+                    boundApps: [], // 显示用的绑定应用列表（会在初始化时从 boundAppIds 自动生成）
+                    requestParams: [
+                        { name: 'sku', type: 'text', required: false, bindParam: 'sku' },
+                        { name: 'warehouse', type: 'text', required: false, bindParam: 'warehouse' },
+                        { name: 'pageNum', type: 'numeric', required: true, bindParam: 'pageNum' },
+                        { name: 'pageSize', type: 'numeric', required: true, bindParam: 'pageSize' }
+                    ],
+                    responseFormat: 'JSON',
+                    responseJson: `{
+  "status": "success",
+  "stockList": "{x}库存数据.output 数组",
+  "totalStock": "{x}totalStock 数值",
+  "pageInfo": {
+    "pageNum": "{x}pageNum 数值",
+    "pageSize": "{x}pageSize 数值"
+  }
+}`
+                },
+                { 
+                    id: 's6', 
+                    name: '订单处理服务', 
+                    type: 'service', 
+                    status: 'API未上线', 
+                    path: '/scm/order', 
+                    method: 'POST',
+                    desc: '处理订单创建、更新、取消等操作,支持批量处理',
+                    dataSource: 'MySQL · 订单数据库',
+                    configMethod: 'SQL',
+                    sortRules: [
+                        { level: 1, field: 'createTime', direction: 'down', type: 'T' },
+                        { level: 2, field: 'orderAmount', direction: 'down', type: '#' },
+                        { level: 3, field: 'orderStatus', direction: 'up', type: 'T' }
+                    ],
+                    requestLimit: 5000,
+                    pagination: false,
+                    timeout: 30000,
+                    boundAppIds: [], // 绑定的应用ID数组（会在初始化时从应用的 bindings 自动生成）
+                    boundApps: [], // 显示用的绑定应用列表（会在初始化时从 boundAppIds 自动生成）
+                    requestParams: [
+                        { name: 'orderData', type: 'text', required: true, bindParam: 'orderData' },
+                        { name: 'batchMode', type: 'boolean', required: false, defaultValue: 'false', bindParam: 'batchMode' }
+                    ],
+                    responseFormat: 'JSON',
+                    responseJson: `{
+  "errCode": "{x}errCode 数值",
+  "errMsg": "{x}errMsg 文本",
+  "orderId": "{x}orderId 文本",
+  "result": "{x}处理结果.output 对象"
+}`
+                }
+            ]}
+        ];
+
+        const APP_DATA = [
+            { id: 'af1', name: '核心业务应用', type: 'folder', children: [
+                { id: 'a1', name: '应用A', type: 'app', creator: 'admin', time: '2023-10-18', bindings: ['s1'], path: 'service/publish/core-01' },
+                { id: 'a2', name: '绑定应用test', type: 'app', creator: 'user2', time: '2023-11-01', bindings: [], path: 'service/publish/core-02' }
+            ]},
+            { id: 'af2', name: '外部对接应用', type: 'folder', children: [
+                { id: 'a4', name: '应用4', type: 'app', creator: 'partner', time: '2023-09-10', bindings: [], path: 'service/ext/111' }
+            ]}
+        ];
+
+        // --- 状态管理 ---
+        const State = {
+            currTab: 'service',
+            activeServiceId: 's1',
+            activeAppId: 'a1',
+            expandedFolders: new Set(['f1', 'af1']),
+            currentABTest: 'A', // A/B测试方案，默认为A方案
+            appDetailEditMode: {}, // 存储每个应用的编辑状态，key为appId，value为true/false
+            serviceEditMode: false, // 服务编辑模式，true时显示编辑页面
+            appEditMode: false, // 应用编辑模式，true时显示编辑页面
+            
+            // 弹窗临时状态
+            tempSelectedServices: new Set(), // 存储服务ID（用于应用绑定服务）
+            tempSelectedApps: new Set(), // 存储应用ID（用于服务绑定应用）
+
+            getService: (id) => {
+                for(let f of SERVICE_DATA) if(f.children) {
+                    let s = f.children.find(i => i.id === id);
+                    if(s) return s;
+                }
+                return null;
+            },
+            getApp: (id) => {
+                for(let f of APP_DATA) if(f.children) {
+                    let a = f.children.find(i => i.id === id);
+                    if(a) return a;
+                }
+                return null;
+            },
+            getParentId: (itemId, type) => {
+                const data = type === 'service' ? SERVICE_DATA : APP_DATA;
+                for(let f of data) {
+                    if(f.children.find(c => c.id === itemId)) return f.id;
+                }
+                return null;
+            },
+            
+            // 维护服务和应用的双向绑定关系
+            updateBindings: (appId, serviceIds) => {
+                const app = State.getApp(appId);
+                if (!app) return;
+                
+                // 获取旧的绑定服务列表
+                const oldServiceIds = app.bindings || [];
+                
+                // 更新应用的绑定列表
+                app.bindings = serviceIds;
+                
+                // 初始化 boundAppIds 字段（如果不存在）
+                if (!app.boundAppIds) {
+                    app.boundAppIds = [];
+                }
+                
+                // 更新所有服务的 boundAppIds
+                // 1. 从旧的服务中移除该应用
+                oldServiceIds.forEach(serviceId => {
+                    const service = State.getService(serviceId);
+                    if (service) {
+                        if (!service.boundAppIds) {
+                            service.boundAppIds = [];
+                        }
+                        const index = service.boundAppIds.indexOf(appId);
+                        if (index > -1) {
+                            service.boundAppIds.splice(index, 1);
+                        }
+                        // 同步更新 boundApps 显示数据
+                        State.syncServiceBoundApps(service);
+                    }
+                });
+                
+                // 2. 向新的服务中添加该应用
+                serviceIds.forEach(serviceId => {
+                    const service = State.getService(serviceId);
+                    if (service) {
+                        if (!service.boundAppIds) {
+                            service.boundAppIds = [];
+                        }
+                        if (service.boundAppIds.indexOf(appId) === -1) {
+                            service.boundAppIds.push(appId);
+                        }
+                        // 同步更新 boundApps 显示数据
+                        State.syncServiceBoundApps(service);
+                    }
+                });
+            },
+            
+            // 同步服务的 boundApps 显示数据（从 boundAppIds 生成）
+            syncServiceBoundApps: (service) => {
+                if (!service.boundAppIds || service.boundAppIds.length === 0) {
+                    service.boundApps = [];
+                    return;
+                }
+                
+                // 从 boundAppIds 生成 boundApps 显示数据
+                service.boundApps = service.boundAppIds.map(appId => {
+                    const app = State.getApp(appId);
+                    if (!app) return null;
+                    
+                    // 生成完整URL
+                    // 应用路径：应用详情页的「应用路径」字段
+                    // API路径：服务详情页的「API路径」字段（去掉"应用路径"前缀后的部分）
+                    const appPath = app.path || 'service/publish/' + appId;
+                    const apiPath = service.path || '/api';
+                    const url = generateFullUrl(appPath, apiPath);
+                    
+                    return {
+                        name: app.name,
+                        url: url.length > 50 ? url.substring(0, 47) + '...' : url,
+                        expiry: '长期有效' // 默认值，可以根据实际需求修改
+                    };
+                }).filter(item => item !== null);
+            }
+        };
+
+        // --- UI 逻辑 ---
+        const UI = {
+            init: () => {
+                // 第一步：清空所有服务的 boundAppIds（以应用的 bindings 为准）
+                SERVICE_DATA.forEach(folder => {
+                    if (folder.children) {
+                        folder.children.forEach(service => {
+                            if (service.type === 'service') {
+                                // 确保 boundAppIds 字段存在并清空
+                                service.boundAppIds = [];
+                            }
+                        });
+                    }
+                });
+                
+                // 第二步：从应用的 bindings 构建服务的 boundAppIds（确保双向一致）
+                APP_DATA.forEach(folder => {
+                    if (folder.children) {
+                        folder.children.forEach(app => {
+                            if (app.type === 'app' && app.bindings && app.bindings.length > 0) {
+                                app.bindings.forEach(serviceId => {
+                                    const service = State.getService(serviceId);
+                                    if (service) {
+                                        if (!service.boundAppIds) {
+                                            service.boundAppIds = [];
+                                        }
+                                        // 将应用ID添加到服务的 boundAppIds 中
+                                        if (service.boundAppIds.indexOf(app.id) === -1) {
+                                            service.boundAppIds.push(app.id);
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+                
+                // 第三步：同步所有服务的 boundApps 显示数据
+                SERVICE_DATA.forEach(folder => {
+                    if (folder.children) {
+                        folder.children.forEach(service => {
+                            if (service.type === 'service') {
+                                State.syncServiceBoundApps(service);
+                            }
+                        });
+                    }
+                });
+                
+                UI.renderTree('service');
+                UI.renderTree('app');
+                UI.renderContent();
+            },
+
+            switchABTest: (scheme) => {
+                State.currentABTest = scheme;
+                // 更新按钮状态
+                document.getElementById('ab-btn-a').classList.toggle('active', scheme === 'A');
+                document.getElementById('ab-btn-b').classList.toggle('active', scheme === 'B');
+                
+                // 如果新建应用弹窗是打开的，更新字段显示（A/B方案都隐藏）
+                const modal = document.getElementById('new-app-modal');
+                if (!modal.classList.contains('hidden')) {
+                    const pathInput = document.getElementById('new-app-path');
+                    const pathItem = pathInput.closest('.form-item');
+                    const authItem = document.getElementById('new-app-auth').closest('.form-item');
+                    
+                    // A/B方案都隐藏应用路径和应用认证方式
+                    pathItem.style.display = 'none';
+                    authItem.style.display = 'none';
+                }
+                
+                // 重新渲染内容区，以更新应用详情页
+                UI.renderContent();
+            },
+
+            switchTab: (tab) => {
+                State.currTab = tab;
+                document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+                document.getElementById('tab-' + tab).classList.add('active');
+                document.getElementById('sidebar-service').classList.add('hidden');
+                document.getElementById('sidebar-app').classList.add('hidden');
+                document.getElementById('sidebar-' + tab).classList.remove('hidden');
+                UI.renderContent();
+            },
+
+            onSearch: (val, type) => UI.renderTree(type, val.trim()),
+
+            // 渲染主树
+            renderTree: (type, filter = '') => {
+                const data = type === 'service' ? SERVICE_DATA : APP_DATA;
+                const activeId = type === 'service' ? State.activeServiceId : State.activeAppId;
+                const container = document.getElementById('tree-' + type);
+                container.innerHTML = '';
+
+                data.forEach(folder => {
+                    const hasChildMatch = folder.children.some(c => c.name.includes(filter));
+                    const isFolderMatch = folder.name.includes(filter);
+                    if (filter && !hasChildMatch && !isFolderMatch) return;
+
+                    let isExpanded = State.expandedFolders.has(folder.id) || filter.length > 0;
+
+                    const fNode = document.createElement('div');
+                    fNode.className = 'tree-node indent-0';
+                    fNode.innerHTML = `
+                        <span class="arrow ${isExpanded ? 'down' : ''}"><i class="fa fa-caret-right"></i></span>
+                        <span class="icon-folder"><i class="fa fa-folder"></i></span>
+                        ${folder.name}
+                    `;
+                    fNode.onclick = (e) => {
+                        e.stopPropagation();
+                        if (State.expandedFolders.has(folder.id)) State.expandedFolders.delete(folder.id);
+                        else State.expandedFolders.add(folder.id);
+                        UI.renderTree(type, filter);
+                    };
+                    container.appendChild(fNode);
+
+                    if (isExpanded) {
+                        folder.children.forEach(item => {
+                            if (filter && !item.name.includes(filter)) return;
+                            const iNode = document.createElement('div');
+                            const isActive = item.id === activeId;
+                            iNode.className = `tree-node indent-1 ${isActive ? 'active' : ''}`;
+
+                            // Change 2: 仅保留紫色 API 图标，移除 icon-file
+                            let iconHtml = '';
+                            if(type === 'service') {
+                                iconHtml = `<span class="api-badge-mini">API</span>`;
+                            } else {
+                                iconHtml = `<span class="icon-file" style="color:${isActive?'inherit':'#5c8dff'}"><i class="fa fa-cube"></i></span>`;
+                            }
+
+                            iNode.innerHTML = `${iconHtml}${item.name}`;
+                            iNode.onclick = (e) => {
+                                e.stopPropagation();
+                                if (type === 'service') State.activeServiceId = item.id;
+                                else State.activeAppId = item.id;
+                                UI.renderTree(type, filter);
+                                UI.renderContent();
+                            };
+                            container.appendChild(iNode);
+                        });
+                    }
+                });
+            },
+
+            // 渲染详情区
+            renderContent: () => {
+                const container = document.getElementById('content-area');
+                if (State.currTab === 'service') {
+                    const s = State.getService(State.activeServiceId);
+                    if (State.serviceEditMode) {
+                        container.innerHTML = UI.getServiceEditHtml(s);
+                    } else {
+                        container.innerHTML = UI.getServiceHtml(s);
+                    }
+                } else {
+                    const a = State.getApp(State.activeAppId);
+                    if (State.appEditMode) {
+                        container.innerHTML = UI.getAppEditHtml(a);
+                    } else {
+                        container.innerHTML = UI.getAppHtml(a);
+                    }
+                }
+            },
+
+            // --- 服务详情 ---
+            getServiceHtml: (data) => {
+                if(!data) return '';
+                // Change 3: API已上线 -> 禁用编辑
+                const isOnline = data.status === 'API已上线';
+                const editBtnClass = isOnline ? 'btn primary disabled' : 'btn primary';
+
+                // 确保 boundAppIds 字段存在并同步 boundApps 显示数据
+                if (!data.boundAppIds) {
+                    data.boundAppIds = [];
+                }
+                State.syncServiceBoundApps(data);
+
+                // 生成排序规则HTML
+                let sortRulesHtml = '';
+                if(data.sortRules && data.sortRules.length > 0) {
+                    sortRulesHtml = data.sortRules.map(rule => {
+                        const arrow = rule.direction === 'up' ? '↑' : '↓';
+                        const arrowClass = rule.direction === 'up' ? 'up' : 'down';
+                        return `<span class="sort-rule"><span class="arrow ${arrowClass}">${arrow}</span>${rule.level}级 ${rule.type} ${rule.field}</span>`;
+                    }).join('');
+                }
+
+                // 生成绑定应用表格HTML（从 boundAppIds 生成）
+                let boundAppsHtml = '';
+                if(data.boundAppIds && data.boundAppIds.length > 0) {
+                    boundAppsHtml = data.boundAppIds.map(appId => {
+                        const app = State.getApp(appId);
+                        if (!app) return '';
+                        
+                        // 生成完整URL
+                        // 应用路径：应用详情页的「应用路径」字段
+                        // API路径：服务详情页的「API路径」字段（去掉"应用路径"前缀后的部分）
+                        const appPath = app.path || 'service/publish/' + appId;
+                        const apiPath = data.path || '/api';
+                        const url = generateFullUrl(appPath, apiPath);
+                        const expiry = '长期有效';
+                        const expiryIcon = expiry !== '长期有效' ? '<i class="fa fa-calendar" style="margin-left:4px; color:#999;"></i>' : '';
+                        
+                        return `
+                            <tr>
+                                <td><span class="link-blue" onclick="UI.jumpToApp('${appId}')">${app.name}</span></td>
+                                <td class="url-cell" style="font-family:monospace; color:#666; font-size:12px;">
+                                    <div class="url-cell-content">
+                                        <span style="word-break: break-all;" title="${url}">${url}</span>
+                                        <i class="fa fa-copy copy-url-btn" data-url="${url.replace(/"/g, '&quot;')}" onclick="UI.copyToClipboard(this.getAttribute('data-url'))" title="复制URL"></i>
+                                    </div>
+                                </td>
+                                <td>${expiry}${expiryIcon}</td>
+                                <td><button class="unbind-btn" onclick="UI.unbindAppFromService('${appId}', '${data.id}')">解绑</button></td>
+                            </tr>
+                        `;
+                    }).filter(html => html !== '').join('');
+                } else {
+                    boundAppsHtml = '<tr><td colspan="4" style="text-align:center; padding:20px; color:#999;">暂无绑定应用</td></tr>';
+                }
+
+                // 生成请求参数表格HTML
+                let requestParamsHtml = '';
+                if(data.requestParams && data.requestParams.length > 0) {
+                    requestParamsHtml = data.requestParams.map(param => {
+                        const typeClass = param.type === 'numeric' ? 'numeric' : (param.type === 'boolean' ? 'boolean' : 'text');
+                        const typeLabel = param.type === 'numeric' ? '# 数值' : (param.type === 'boolean' ? 'B 布尔' : 'T 文本');
+                        const requiredText = param.required ? '是' : `否${param.defaultValue ? ';默认值:' + param.defaultValue : ''}`;
+                        return `
+                            <tr>
+                                <td><code>${param.name}</code></td>
+                                <td><span class="param-type ${typeClass}">${typeLabel}</span></td>
+                                <td>${requiredText}</td>
+                                <td><span class="bind-arrow">⇄</span> ${param.bindParam}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+
+                const statusClass = data.status === 'API已上线' ? 'status-online' : 'status-offline';
+                
+                return `
+                    <div class="detail-header">
+                        <div>
+                            <h2 style="display:flex; align-items:center; font-size:16px;">
+                                <span class="api-tag-lg">API</span>${data.name || '服务名称'}
+                                <span class="status-tag ${data.status === 'API未上线' ? 'offline' : ''}">${data.status || 'API未上线'}</span>
+                            </h2>
+                            <div class="desc-text">${data.desc || '描述：按需获取数据，禁止频繁调用...'}</div>
+                        </div>
+                        <div>
+                            <button class="btn">测试调用</button>
+                            ${isOnline ? 
+                                `<button class="btn" onclick="UI.toggleServiceStatus('${data.id}', 'offline')"><i class="fa fa-arrow-down"></i> 下线</button>` : 
+                                `<button class="btn" onclick="UI.toggleServiceStatus('${data.id}', 'online')"><i class="fa fa-arrow-up"></i> 上线</button>`
+                            }
+                            <button class="${editBtnClass}" onclick="UI.openServiceEdit('${data.id}')"><i class="fa fa-pen-to-square"></i> 编辑</button>
+                        </div>
+                    </div>
+
+                    <div class="detail-content-wrapper ${statusClass}">
+                    <!-- 服务内容（数据查询） -->
+                    <div class="section-title">服务内容（数据查询）</div>
+                    <div class="form-grid">
+                        <div class="form-label">数据源</div>
+                        <div class="form-val">${data.dataSource || 'MySQL · 数据连接1'}</div>
+                        <div class="form-label">配置方式</div>
+                        <div class="form-val">${data.configMethod || 'SQL'} <a href="#" class="link-blue">查看详情</a></div>
+                        <div class="form-label">返回值排序</div>
+                        <div class="form-val">${sortRulesHtml || '<span class="sort-rule"><span class="arrow up">↑</span>1级 # age</span>'}</div>
+                        <div class="form-label">单次请求量</div>
+                        <div class="form-val">上限 ${data.requestLimit || 10000}条</div>
+                        <div class="form-label">分页查询</div>
+                        <div class="form-val">${data.pagination ? '已开启 <i class="fa fa-caret-down" style="margin-left:4px;"></i>' : '未开启'}</div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <div class="collapsible-header" onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('span').textContent = this.nextElementSibling.classList.contains('hidden') ? '▶ 参数和变量' : '▼ 参数和变量';">
+                            <span>▶ 参数和变量</span>
+                        </div>
+                        <div class="collapsible-content hidden">
+                            <div style="color:#999; font-size:12px; padding:8px 0;">参数配置内容...</div>
+                        </div>
+                    </div>
+
+                    <!-- API接口配置 -->
+                    <div class="section-title">API接口配置</div>
+                    
+                    <!-- 基础属性 -->
+                    <div class="section-subtitle">基础属性</div>
+                    <div class="form-grid">
+                        <div class="form-label">请求方式</div>
+                        <div class="form-val">${data.method || 'GET'}</div>
+                        <div class="form-label">API路径</div>
+                        <div class="form-val">应用路径${data.path || '/1234'}</div>
+                        <div class="form-label">绑定应用</div>
+                        <div class="form-val">
+                            <button class="btn primary" style="background:#eef3fe; color:var(--primary-color); border:none; font-weight:500;" onclick="UI.openBindAppModal()">
+                                <i class="fa fa-plus"></i> 添加
+                            </button>
+                        </div>
+                    </div>
+                    <table class="data-table" style="margin-top:12px;">
+                        <thead>
+                            <tr>
+                                <th width="20%">已绑定应用名称</th>
+                                <th width="50%">完整URL</th>
+                                <th width="20%">授权有效期</th>
+                                <th width="10%"></th>
+                            </tr>
+                        </thead>
+                        <tbody>${boundAppsHtml}</tbody>
+                    </table>
+                    <div class="form-grid" style="margin-top:20px;">
+                        <div class="form-label">超时时间</div>
+                        <div class="form-val">${data.timeout || 10000} ms</div>
+                    </div>
+
+                    <!-- 接口请求 -->
+                    <div class="section-subtitle">接口请求</div>
+                    <div class="tab-container">
+                        <div class="tab-header">
+                            <div class="tab-item-inline active">Query</div>
+                        </div>
+                        <div class="tab-content">
+                            <table class="param-table">
+                                <thead>
+                                    <tr>
+                                        <th width="20%">请求参数名</th>
+                                        <th width="20%">参数类型</th>
+                                        <th width="30%">必填</th>
+                                        <th width="30%">绑定服务入参</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${requestParamsHtml || '<tr><td colspan="4" style="text-align:center; padding:20px; color:#999;">暂无请求参数</td></tr>'}</tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 接口响应 -->
+                    <div class="section-subtitle">接口响应</div>
+                    <div class="form-grid">
+                        <div class="form-label">响应格式</div>
+                        <div class="form-val">${data.responseFormat || 'JSON'}</div>
+                    </div>
+                    <div class="json-code" style="margin-top:12px;">${data.responseJson || '{}'}</div>
+                    </div>
+                `;
+            },
+
+            // --- 服务编辑页面 ---
+            getServiceEditHtml: (data) => {
+                if(!data) return '';
+                
+                // 生成绑定应用表格HTML
+                let boundAppsHtml = '';
+                if(data.boundAppIds && data.boundAppIds.length > 0) {
+                    boundAppsHtml = data.boundAppIds.map(appId => {
+                        const app = State.getApp(appId);
+                        if (!app) return '';
+                        
+                        // 生成完整URL
+                        // 应用路径：应用详情页的「应用路径」字段
+                        // API路径：服务详情页的「API路径」字段（去掉"应用路径"前缀后的部分）
+                        const appPath = app.path || 'service/publish/' + appId;
+                        const apiPath = data.path || '/api';
+                        const url = generateFullUrl(appPath, apiPath);
+                        
+                        return `
+                            <tr>
+                                <td><input type="checkbox"></td>
+                                <td>${app.name}</td>
+                                <td class="url-cell" style="font-family:monospace; color:#666; font-size:12px;">
+                                    <div class="url-cell-content">
+                                        <span style="word-break: break-all;" title="${url}">${url}</span>
+                                        <i class="fa fa-copy copy-url-btn" data-url="${url.replace(/"/g, '&quot;')}" onclick="UI.copyToClipboard(this.getAttribute('data-url'))" title="复制URL"></i>
+                                    </div>
+                                </td>
+                                <td>长期有效 <i class="fa fa-refresh" style="margin-left:4px; color:#999; cursor:pointer;"></i></td>
+                                <td><button class="unbind-btn" onclick="UI.unbindAppFromService('${appId}', '${data.id}')">解绑</button></td>
+                            </tr>
+                        `;
+                    }).filter(html => html !== '').join('');
+                } else {
+                    boundAppsHtml = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#999;">暂无绑定应用</td></tr>';
+                }
+
+                // 生成请求参数表格HTML
+                let requestParamsHtml = '';
+                if(data.requestParams && data.requestParams.length > 0) {
+                    requestParamsHtml = data.requestParams.map(param => {
+                        const typeClass = param.type === 'numeric' ? 'numeric' : (param.type === 'boolean' ? 'boolean' : 'text');
+                        const typeLabel = param.type === 'numeric' ? '# 数值' : (param.type === 'boolean' ? 'B 布尔' : 'T 文本');
+                        const requiredText = param.required ? '是' : `否${param.defaultValue ? ';默认值:' + param.defaultValue : ''}`;
+                        return `
+                            <tr>
+                                <td><code>${param.name}</code></td>
+                                <td><span class="param-type ${typeClass}">${typeLabel}</span></td>
+                                <td>--</td>
+                                <td>${requiredText}</td>
+                                <td>
+                                    <select style="border:1px solid var(--border-color); border-radius:4px; padding:4px 8px; font-size:12px;">
+                                        <option value="${param.bindParam}">${param.bindParam}</option>
+                                    </select>
+                                    <i class="fa fa-trash" style="margin-left:8px; color:#999; cursor:pointer;"></i>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    requestParamsHtml = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#999;">暂无请求参数</td></tr>';
+                }
+
+                // 解析响应内容JSON，生成可视化HTML
+                let responseContentHtml = '';
+                try {
+                    const responseJson = data.responseJson || '{}';
+                    // 尝试解析JSON字符串
+                    let parsedJson = {};
+                    try {
+                        // 先清理掉注释和特殊格式
+                        let cleanedJson = responseJson.replace(/\/\/.*$/gm, '').trim();
+                        // 尝试解析标准JSON
+                        parsedJson = JSON.parse(cleanedJson);
+                    } catch(e) {
+                        // 如果不是标准JSON，尝试手动解析
+                        const lines = responseJson.split('\n');
+                        lines.forEach(line => {
+                            // 匹配 "key": "value" 格式
+                            const match = line.match(/"([^"]+)":\s*"([^"]+)"/);
+                            if (match) {
+                                parsedJson[match[1]] = match[2];
+                            }
+                        });
+                    }
+                    
+                    // 生成响应字段行
+                    const fields = Object.keys(parsedJson);
+                    if (fields.length > 0) {
+                        responseContentHtml = fields.map(key => {
+                            const value = parsedJson[key];
+                            // 提取值和类型
+                            let displayValue = value;
+                            let fieldType = '文本';
+                            
+                            // 处理 {x} 前缀
+                            if (typeof value === 'string' && value.startsWith('{x}')) {
+                                displayValue = value.substring(3).trim();
+                            } else if (typeof value === 'string') {
+                                displayValue = value;
+                            }
+                            
+                            // 提取类型信息（从值中查找类型关键词）
+                            if (typeof displayValue === 'string') {
+                                if (displayValue.includes('数组') || displayValue.includes('array') || displayValue.includes('.output 数组')) {
+                                    fieldType = '数组';
+                                    displayValue = displayValue.replace(/\s*数组.*$/, '').replace(/\.output\s*数组/, '').trim();
+                                } else if (displayValue.includes('数值') || displayValue.includes('number') || displayValue.includes('数值 //')) {
+                                    fieldType = '数值';
+                                    displayValue = displayValue.replace(/\s*数值.*$/, '').trim();
+                                } else if (displayValue.includes('文本') || displayValue.includes('text') || displayValue.includes('文本 //')) {
+                                    fieldType = '文本';
+                                    displayValue = displayValue.replace(/\s*文本.*$/, '').trim();
+                                }
+                                
+                                // 移除注释部分
+                                if (displayValue.includes('//')) {
+                                    displayValue = displayValue.split('//')[0].trim();
+                                }
+                            }
+                            
+                            return `
+                                <div class="response-field-row">
+                                    <div class="response-field-key">"${key}":</div>
+                                    <div class="response-field-value">
+                                        <span class="response-value-pill">
+                                            ${displayValue}
+                                            <i class="fa fa-caret-down"></i>
+                                        </span>
+                                    </div>
+                                    <div class="response-field-type">${fieldType}</div>
+                                    <div class="response-field-actions">
+                                        <i class="fa fa-code" title="插入变量" style="font-style: normal;">{x}</i>
+                                        <i class="fa fa-trash" title="删除"></i>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                        
+                        // 添加加号按钮
+                        responseContentHtml = `
+                            <div class="response-json-brace">{</div>
+                            ${responseContentHtml}
+                            <button class="response-add-btn" title="添加字段">
+                                <i class="fa fa-plus"></i>
+                            </button>
+                            <div class="response-json-brace">}</div>
+                        `;
+                    } else {
+                        responseContentHtml = `
+                            <div class="response-json-brace">{</div>
+                            <button class="response-add-btn" title="添加字段" style="margin-top: 8px;">
+                                <i class="fa fa-plus"></i>
+                            </button>
+                            <div class="response-json-brace">}</div>
+                        `;
+                    }
+                } catch(e) {
+                    responseContentHtml = `
+                        <div class="response-json-brace">{</div>
+                        <div style="text-align:center; padding:20px; color:#999;">解析响应内容失败</div>
+                        <button class="response-add-btn" title="添加字段" style="margin-top: 8px;">
+                            <i class="fa fa-plus"></i>
+                        </button>
+                        <div class="response-json-brace">}</div>
+                    `;
+                }
+
+                return `
+                    <div class="service-edit-page">
+                        <!-- 顶部导航 -->
+                        <div class="edit-header">
+                            <div class="edit-header-left">
+                                <span class="edit-back-btn" onclick="UI.closeServiceEdit()"><i class="fa fa-arrow-left"></i></span>
+                                <div class="edit-service-name">
+                                    <input type="text" class="edit-service-name-input" value="${data.name || '服务名称'}" id="edit-service-name">
+                                </div>
+                            </div>
+                            <div class="edit-header-right">转换为编排服务</div>
+                        </div>
+                        
+                        <!-- 面包屑导航 -->
+                        <div class="edit-breadcrumb">
+                            <div class="edit-breadcrumb-step">
+                                <span class="edit-breadcrumb-step-number">1</span>
+                                <span>服务内容 (数据查询)</span>
+                            </div>
+                            <span class="edit-breadcrumb-separator">≫</span>
+                            <div class="edit-breadcrumb-step active">
+                                <span class="edit-breadcrumb-step-number">2</span>
+                                <span>API接口配置</span>
+                            </div>
+                        </div>
+                        
+                        <!-- 编辑内容 -->
+                        <div class="edit-content">
+                            
+                            <!-- 基础属性 -->
+                            <div class="section-subtitle">基础属性</div>
+                            <div class="form-grid">
+                                <div class="form-label">请求方式</div>
+                                <div class="form-val">
+                                    <div class="edit-radio-group">
+                                        <div class="edit-radio-item ${data.method === 'POST' ? 'checked' : ''}" onclick="UI.setServiceMethod('POST')">
+                                            <div class="edit-radio-custom"></div>
+                                            <span>POST</span>
+                                        </div>
+                                        <div class="edit-radio-item ${data.method === 'GET' ? 'checked' : ''}" onclick="UI.setServiceMethod('GET')">
+                                            <div class="edit-radio-custom"></div>
+                                            <span>GET</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-label">API路径</div>
+                                <div class="form-val">
+                                    <div class="edit-input-inline">
+                                        <span style="color:#ff8800;">应用路径</span>
+                                        <input type="text" class="edit-input" value="${data.path || '/1234'}" id="edit-service-path" style="flex:1;">
+                                    </div>
+                                </div>
+                                <div class="form-label">绑定应用</div>
+                                <div class="form-val" style="display: block; align-items: normal;">
+                                    <div>
+                                        <button class="btn primary" style="background:#eef3fe; color:var(--primary-color); border:none; font-weight:500;" onclick="UI.openBindAppModal()">
+                                            <i class="fa fa-plus"></i> 添加
+                                        </button>
+                                        <span style="margin-left:12px; color:#999; font-size:12px;">上线前需绑定至少1个应用</span>
+                                    </div>
+                                    <table class="data-table" style="margin-top:12px;">
+                                        <thead>
+                                            <tr>
+                                                <th width="5%"></th>
+                                                <th width="20%">已绑定应用名称</th>
+                                                <th width="45%">完整URL</th>
+                                                <th width="20%">授权有效期</th>
+                                                <th width="10%"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>${boundAppsHtml}</tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="form-grid" style="margin-top:20px;">
+                                <div class="form-label">超时时间</div>
+                                <div class="form-val">
+                                    <div class="edit-input-inline">
+                                        <input type="number" class="edit-input" value="${data.timeout || 10000}" id="edit-service-timeout" style="width:120px;">
+                                        <span>ms</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 接口请求 -->
+                            <div class="section-subtitle with-border">接口请求</div>
+                            <div class="form-grid" style="margin-top: 12px; margin-bottom: 0;">
+                                <div class="form-label">请求参数</div>
+                                <div class="form-val" style="display: block; align-items: normal;">
+                                    <div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 12px;">
+                                        <div class="tab-header" style="border-bottom: none; gap: 0;">
+                                            <div class="tab-item-inline active" style="margin-bottom: 0;">Query</div>
+                                            <div class="tab-item-inline" style="margin-bottom: 0;">Body</div>
+                                        </div>
+                                    </div>
+                                    <div style="margin-bottom: 12px; display: flex; justify-content: space-between;">
+                                        <button class="btn primary" style="background:#eef3fe; color:var(--primary-color); border:none; font-weight:500;">
+                                            <i class="fa fa-plus"></i> 添加请求参数
+                                        </button>
+                                        <button class="btn">
+                                            快捷生成 <i class="fa fa-caret-down"></i>
+                                        </button>
+                                    </div>
+                                    <table class="param-table">
+                                        <thead>
+                                            <tr>
+                                                <th width="15%">请求参数名</th>
+                                                <th width="15%">参数类型</th>
+                                                <th width="25%">描述</th>
+                                                <th width="15%">必填</th>
+                                                <th width="30%">绑定服务入参</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>${requestParamsHtml}</tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- 接口响应 -->
+                            <div class="section-subtitle with-border">接口响应</div>
+                            <div class="form-grid">
+                                <div class="form-label">响应格式</div>
+                                <div class="form-val">
+                                    <div class="edit-radio-group">
+                                        <div class="edit-radio-item checked">
+                                            <div class="edit-radio-custom"></div>
+                                            <span>JSON</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-label">响应内容</div>
+                                <div class="form-val" style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px;">
+                                    <div style="align-self: flex-end;">
+                                        <button class="btn">
+                                            快捷生成 <i class="fa fa-caret-down"></i>
+                                        </button>
+                                    </div>
+                                    <div class="response-content-editor" style="width: 100%;">
+                                        <div class="response-json-wrapper">
+                                            ${responseContentHtml}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 底部按钮 -->
+                        <div class="edit-footer">
+                            <div class="edit-footer-left">
+                                <button class="btn" onclick="UI.closeServiceEdit()">上一步</button>
+                                <button class="btn primary" onclick="UI.saveServiceEdit('${data.id}')">保存</button>
+                                <button class="btn primary" onclick="UI.saveAndPublishService('${data.id}')">保存并上线</button>
+                            </div>
+                            <div>
+                                <button class="btn">测试调用</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            },
+
+            // --- 应用详情 ---
+            getAppHtml: (data) => {
+                if (!data) return '';
+                
+                let rows = '';
+                if(data.bindings && data.bindings.length) {
+                    data.bindings.forEach(sid => {
+                        let s = State.getService(sid);
+                        if(s) {
+                            // 生成完整URL
+                            // 应用路径：应用详情页的「应用路径」字段
+                            // API路径：服务详情页的「API路径」字段（去掉"应用路径"前缀后的部分）
+                            const appPath = data.path || 'service/publish/' + data.id;
+                            const apiPath = s.path || '/api';
+                            const url = generateFullUrl(appPath, apiPath);
+                            
+                            rows += `
+                            <tr>
+                                <td><input type="checkbox"></td>
+                                <td><span class="link-blue" onclick="UI.jumpToService('${s.id}')">${s.name}</span></td>
+                                <td><span class="status-tag ${s.status === 'API未上线' ? 'offline' : ''}">${s.status}</span></td>
+                                <td class="url-cell" style="font-family:monospace; color:#666; font-size:12px;">
+                                    <div class="url-cell-content">
+                                        <span style="word-break: break-all;" title="${url}">${url}</span>
+                                        <i class="fa fa-copy copy-url-btn" data-url="${url.replace(/"/g, '&quot;')}" onclick="UI.copyToClipboard(this.getAttribute('data-url'))" title="复制URL"></i>
+                                    </div>
+                                </td>
+                                <td>
+                                    <input type="text" value="2025/11/30" style="border:1px solid var(--border-color); border-radius:4px; padding:4px 8px; font-size:12px; width:100px;">
+                                    <i class="fa fa-calendar" style="margin-left:4px; color:#999; cursor:pointer;"></i>
+                                </td>
+                                <td>
+                                    <button class="unbind-btn" onclick="UI.unbindServiceFromApp('${sid}', '${data.id}')">解绑</button>
+                                    <i class="fa fa-ellipsis-vertical" style="margin-left:8px; color:#999; cursor:pointer;"></i>
+                                </td>
+                            </tr>`;
+                        }
+                    });
+                } else {
+                    rows = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#999;">暂无绑定服务</td></tr>';
+                }
+
+                // 根据A/B方案显示不同的内容
+                const isB = State.currentABTest === 'B';
+                
+                if (isB) {
+                    // B方案：新的详情页结构
+                    const appId = data.path ? data.path.split('/').pop() : data.id;
+                    const pathPrefix = data.path ? data.path.substring(0, data.path.lastIndexOf('/') + 1) : 'service/publish/';
+                    const time = data.time || '2023-10-18 19:11:22';
+                    const desc = data.desc || 'XXXXXXXXXXXXXXXX';
+                    const authType = data.authType || 'none';
+                    const isEditMode = State.appDetailEditMode[data.id] || false;
+                    
+                    // 基础信息（移到卡片外）
+                    const basicInfoHtml = `
+                        <div class="app-detail-basic-info">
+                            <div class="app-detail-basic-line">
+                                <span class="app-detail-basic-label">创建人：</span>
+                                <span class="app-detail-basic-value">${data.creator || 'admin'}</span>
+                            </div>
+                            <div class="app-detail-basic-line">
+                                <span class="app-detail-basic-label">创建时间：</span>
+                                <span class="app-detail-basic-value">${time}</span>
+                            </div>
+                            <div class="app-detail-basic-line">
+                                <span class="app-detail-basic-label">描述：</span>
+                                <span class="app-detail-basic-value">${desc}</span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // 卡片内容
+                    let cardContentHtml = '';
+                    if (isEditMode) {
+                        // 编辑状态
+                        cardContentHtml = `
+                            <div class="app-detail-form-item">
+                                <label class="app-detail-form-label">应用路径</label>
+                                <div class="app-detail-path-input">
+                                    <span class="app-detail-path-prefix">${pathPrefix}</span>
+                                    <span class="app-detail-path-uuid">${appId}</span>
+                                </div>
+                                <div class="app-detail-id-text">应用ID: ${appId}</div>
+                            </div>
+                            
+                            <div class="app-detail-form-item">
+                                <label class="app-detail-form-label">应用认证方式</label>
+                                <div class="app-detail-radio-group-horizontal">
+                                    <div class="app-detail-radio-item ${authType === 'appcode' ? 'checked' : ''}" data-value="appcode">
+                                        <div class="app-detail-radio-custom"></div>
+                                        <span class="app-detail-radio-label">AppCode</span>
+                                    </div>
+                                    <div class="app-detail-radio-item ${authType === 'digest' ? 'checked' : ''}" data-value="digest">
+                                        <div class="app-detail-radio-custom"></div>
+                                        <span class="app-detail-radio-label">摘要签名 <i class="fa fa-question-circle help-icon"></i></span>
+                                    </div>
+                                    <div class="app-detail-radio-item ${authType === 'jiandaoyun' ? 'checked' : ''}" data-value="jiandaoyun">
+                                        <div class="app-detail-radio-custom"></div>
+                                        <span class="app-detail-radio-label">简道云推送认证</span>
+                                    </div>
+                                    <div class="app-detail-radio-item ${authType === 'none' ? 'checked' : ''}" data-value="none">
+                                        <div class="app-detail-radio-custom"></div>
+                                        <span class="app-detail-radio-label">无认证</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="app-detail-actions">
+                                <button class="btn primary" onclick="UI.saveAppDetail('${data.id}')">保存</button>
+                                <button class="btn" onclick="UI.cancelAppDetail('${data.id}')">取消</button>
+                            </div>
+                        `;
+                    } else {
+                        // normal状态（只读）
+                        // 获取认证方式显示文本
+                        let authText = '';
+                        switch(authType) {
+                            case 'appcode':
+                                authText = 'AppCode';
+                                break;
+                            case 'digest':
+                                authText = '摘要签名';
+                                break;
+                            case 'jiandaoyun':
+                                authText = '简道云推送认证SecretbsZeVkMU********';
+                                break;
+                            case 'none':
+                            default:
+                                authText = '无认证';
+                                break;
+                        }
+                        
+                        const fullPath = pathPrefix + appId;
+                        
+                        cardContentHtml = `
+                            <button class="btn app-detail-edit-btn" style="background: white; border: 1px solid var(--border-color);" onclick="UI.editAppDetail('${data.id}')">
+                                <i class="fa fa-pen-to-square"></i> 编辑
+                            </button>
+                            <div class="app-detail-form-item">
+                                <label class="app-detail-form-label">应用路径</label>
+                                <div class="app-detail-value-text">${fullPath}</div>
+                            </div>
+                            
+                            <div class="app-detail-form-item">
+                                <label class="app-detail-form-label">应用认证方式</label>
+                                <div class="app-detail-value-text">${authText}</div>
+                            </div>
+                        `;
+                    }
+                    
+                    return `
+                        <div class="detail-header">
+                            <div style="font-size:18px; font-weight:bold; display:flex; align-items:center;">
+                                <i class="fa fa-cube" style="color:#5c8dff; margin-right:8px;"></i> ${data.name}
+                            </div>
+                            <div>
+                                <button class="btn">查看规则</button>
+                                <button class="btn"><i class="fa fa-file-export"></i> 导出API文档</button>
+                            </div>
+                        </div>
+                        
+                        ${basicInfoHtml}
+                        
+                        <div class="app-detail-form-box ${isEditMode ? '' : 'normal'}">
+                            ${cardContentHtml}
+                        </div>
+                        
+                        <div class="section-title" style="justify-content:space-between;">
+                            <span>绑定服务</span>
+                        </div>
+                        <div style="margin-bottom:12px; display:flex; justify-content:space-between;">
+                            <button class="btn primary" style="background:#eef3fe; color:var(--primary-color); border:none; font-weight:500;" onclick="UI.openBindModal()">
+                                <i class="fa fa-plus"></i> 绑定服务
+                            </button>
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th width="25%">已绑定服务名称</th>
+                                    <th width="15%">API状态</th>
+                                    <th width="35%">路径</th>
+                                    <th width="15%">授权有效期</th>
+                                    <th width="10%"></th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    `;
+                } else {
+                    // A方案：新的详情页结构
+                    const appId = data.path ? data.path.split('/').pop() : data.id;
+                    const pathPrefix = data.path ? data.path.substring(0, data.path.lastIndexOf('/') + 1) : 'service/publish/';
+                    const fullPath = data.path || (pathPrefix + appId);
+                    const time = data.time || '2023-10-18 19:11:22';
+                    const desc = data.desc || '--';
+                    const authType = data.authType || 'none';
+                    
+                    // 获取认证方式显示文本
+                    let authText = '';
+                    switch(authType) {
+                        case 'appcode':
+                            authText = 'AppCode';
+                            break;
+                        case 'digest':
+                            authText = '摘要签名';
+                            break;
+                        case 'jiandaoyun':
+                            authText = '简道云推送认证SecretbsZeVkMU********';
+                            break;
+                        case 'none':
+                        default:
+                            authText = '无认证';
+                            break;
+                    }
+                    
+                    return `
+                        <div class="detail-header">
+                            <div style="font-size:18px; font-weight:bold; display:flex; align-items:center;">
+                                <i class="fa fa-cube" style="color:#5c8dff; margin-right:8px;"></i> ${data.name}
+                            </div>
+                            <div>
+                                <button class="btn">查看规则</button>
+                                <button class="btn"><i class="fa fa-file-export"></i> 导出API文档</button>
+                                <button class="btn primary" onclick="UI.openAppEdit('${data.id}')"><i class="fa fa-pen-to-square"></i> 编辑</button>
+                            </div>
+                        </div>
+                        
+                        <!-- 基本信息 -->
+                        <div class="section-title">基本信息</div>
+                        <div class="form-grid">
+                            <div class="form-label">创建人</div>
+                            <div class="form-val">${data.creator || 'admin'}</div>
+                            <div class="form-label">创建时间</div>
+                            <div class="form-val">${time}</div>
+                            <div class="form-label">应用路径</div>
+                            <div class="form-val">${fullPath}</div>
+                            <div class="form-label">认证</div>
+                            <div class="form-val">${authText}</div>
+                            <div class="form-label">描述</div>
+                            <div class="form-val">${desc}</div>
+                        </div>
+                        
+                        <!-- 绑定服务 -->
+                        <div class="section-title">绑定服务</div>
+                        <div style="margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                            <button class="btn primary" style="background:#eef3fe; color:var(--primary-color); border:none; font-weight:500;" onclick="UI.openBindModal()">
+                                <i class="fa fa-plus"></i> 添加
+                            </button>
+                            <i class="fa fa-search" style="color:#999; cursor:pointer;"></i>
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th width="5%"></th>
+                                    <th width="20%">已绑定服务名称</th>
+                                    <th width="15%">API状态</th>
+                                    <th width="35%">完整URL</th>
+                                    <th width="15%">授权有效期</th>
+                                    <th width="10%"></th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    `;
+                }
+            },
+
+            // --- 应用编辑页面 ---
+            getAppEditHtml: (data) => {
+                if(!data) return '';
+                
+                const appId = data.path ? data.path.split('/').pop() : data.id;
+                const pathPrefix = data.path ? data.path.substring(0, data.path.lastIndexOf('/') + 1) : 'service/publish/';
+                const fullPath = data.path || (pathPrefix + appId);
+                const authType = data.authType || 'none';
+                
+                // 生成绑定服务表格HTML（复用应用详情页的逻辑）
+                let rows = '';
+                if(data.bindings && data.bindings.length) {
+                    data.bindings.forEach(sid => {
+                        let s = State.getService(sid);
+                        if(s) {
+                            // 生成完整URL
+                            const appPath = data.path || 'service/publish/' + data.id;
+                            const apiPath = s.path || '/api';
+                            const url = generateFullUrl(appPath, apiPath);
+                            
+                            rows += `
+                            <tr>
+                                <td><input type="checkbox"></td>
+                                <td><span class="link-blue" onclick="UI.jumpToService('${s.id}')">${s.name}</span></td>
+                                <td><span class="status-tag ${s.status === 'API未上线' ? 'offline' : ''}">${s.status}</span></td>
+                                <td class="url-cell" style="font-family:monospace; color:#666; font-size:12px;">
+                                    <div class="url-cell-content">
+                                        <span style="word-break: break-all;" title="${url}">${url}</span>
+                                        <i class="fa fa-copy copy-url-btn" data-url="${url.replace(/"/g, '&quot;')}" onclick="UI.copyToClipboard(this.getAttribute('data-url'))" title="复制URL"></i>
+                                    </div>
+                                </td>
+                                <td>
+                                    <input type="text" value="2025/11/30" style="border:1px solid var(--border-color); border-radius:4px; padding:4px 8px; font-size:12px; width:100px;">
+                                    <i class="fa fa-calendar" style="margin-left:4px; color:#999; cursor:pointer;"></i>
+                                </td>
+                                <td>
+                                    <button class="unbind-btn" onclick="UI.unbindServiceFromApp('${sid}', '${data.id}')">解绑</button>
+                                    <i class="fa fa-ellipsis-vertical" style="margin-left:8px; color:#999; cursor:pointer;"></i>
+                                </td>
+                            </tr>`;
+                        }
+                    });
+                } else {
+                    rows = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#999;">暂无绑定服务</td></tr>';
+                }
+                
+                return `
+                    <div class="service-edit-page">
+                        <!-- 顶部导航 -->
+                        <div class="edit-header">
+                            <div class="edit-header-left">
+                                <span class="edit-back-btn" onclick="UI.closeAppEdit()"><i class="fa fa-arrow-left"></i></span>
+                                <div class="edit-service-name">
+                                    <input type="text" class="edit-service-name-input" value="${data.name || '应用名称'}" id="edit-app-name">
+                                </div>
+                            </div>
+                            <div class="edit-header-right">转换为编排服务</div>
+                        </div>
+                        
+                        <!-- 编辑内容 -->
+                        <div class="edit-content">
+                            <!-- 基本信息 -->
+                            <div class="section-title">基本信息</div>
+                            <div class="form-grid">
+                                <div class="form-label">应用路径</div>
+                                <div class="form-val" style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 470px;">
+                                    <div class="edit-input-with-prefix">
+                                        <span class="edit-input-prefix">${pathPrefix}</span>
+                                        <input type="text" value="${appId}" id="edit-app-path">
+                                    </div>
+                                    <div style="font-size:12px; color:#999;">应用ID: ${appId}</div>
+                                </div>
+                                <div class="form-label">应用认证方式</div>
+                                <div class="form-val">
+                                    <div class="edit-radio-group">
+                                        <div class="edit-radio-item ${authType === 'appcode' ? 'checked' : ''}" onclick="UI.setAppAuthType('appcode')">
+                                            <div class="edit-radio-custom"></div>
+                                            <span>AppCode</span>
+                                        </div>
+                                        <div class="edit-radio-item ${authType === 'digest' ? 'checked' : ''}" onclick="UI.setAppAuthType('digest')">
+                                            <div class="edit-radio-custom"></div>
+                                            <span>摘要签名 <i class="fa fa-question-circle help-icon"></i></span>
+                                        </div>
+                                        <div class="edit-radio-item ${authType === 'jiandaoyun' ? 'checked' : ''}" onclick="UI.setAppAuthType('jiandaoyun')">
+                                            <div class="edit-radio-custom"></div>
+                                            <span>简道云推送认证</span>
+                                        </div>
+                                        <div class="edit-radio-item ${authType === 'none' ? 'checked' : ''}" onclick="UI.setAppAuthType('none')">
+                                            <div class="edit-radio-custom"></div>
+                                            <span>无认证</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 绑定服务 -->
+                            <div class="section-title">绑定服务</div>
+                            <div style="margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                                <button class="btn primary" style="background:#eef3fe; color:var(--primary-color); border:none; font-weight:500;" onclick="UI.openBindModal()">
+                                    <i class="fa fa-plus"></i> 添加
+                                </button>
+                                <i class="fa fa-search" style="color:#999; cursor:pointer;"></i>
+                            </div>
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th width="5%"></th>
+                                        <th width="20%">已绑定服务名称</th>
+                                        <th width="15%">API状态</th>
+                                        <th width="35%">完整URL</th>
+                                        <th width="15%">授权有效期</th>
+                                        <th width="10%"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>${rows}</tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- 底部按钮 -->
+                        <div class="edit-footer">
+                            <div class="edit-footer-left">
+                                <button class="btn" onclick="UI.closeAppEdit()">上一步</button>
+                                <button class="btn primary" onclick="UI.saveAppEdit('${data.id}')">保存</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            },
+
+            jumpToService: (sid) => {
+                let parentId = State.getParentId(sid, 'service');
+                if(parentId) State.expandedFolders.add(parentId);
+                State.activeServiceId = sid;
+                UI.switchTab('service');
+                UI.renderTree('service');
+            },
+
+            jumpToApp: (appId) => {
+                let parentId = State.getParentId(appId, 'app');
+                if(parentId) State.expandedFolders.add(parentId);
+                State.activeAppId = appId;
+                UI.switchTab('app');
+                UI.renderTree('app');
+            },
+
+            unbindAppFromService: (appId, serviceId) => {
+                const app = State.getApp(appId);
+                const service = State.getService(serviceId);
+                if (!app || !service) return;
+                
+                // 从应用的绑定列表中移除服务
+                if (app.bindings) {
+                    const index = app.bindings.indexOf(serviceId);
+                    if (index > -1) {
+                        app.bindings.splice(index, 1);
+                    }
+                }
+                
+                // 从服务的绑定列表中移除应用
+                if (service.boundAppIds) {
+                    const index = service.boundAppIds.indexOf(appId);
+                    if (index > -1) {
+                        service.boundAppIds.splice(index, 1);
+                    }
+                }
+                
+                // 同步服务的 boundApps 显示数据
+                State.syncServiceBoundApps(service);
+                
+                // 重新渲染内容
+                UI.renderContent();
+            },
+
+            unbindServiceFromApp: (serviceId, appId) => {
+                const app = State.getApp(appId);
+                const service = State.getService(serviceId);
+                if (!app || !service) return;
+                
+                // 从应用的绑定列表中移除服务
+                if (app.bindings) {
+                    const index = app.bindings.indexOf(serviceId);
+                    if (index > -1) {
+                        app.bindings.splice(index, 1);
+                    }
+                }
+                
+                // 从服务的绑定列表中移除应用
+                if (service.boundAppIds) {
+                    const index = service.boundAppIds.indexOf(appId);
+                    if (index > -1) {
+                        service.boundAppIds.splice(index, 1);
+                    }
+                }
+                
+                // 同步服务的 boundApps 显示数据
+                State.syncServiceBoundApps(service);
+                
+                // 重新渲染内容
+                UI.renderContent();
+            },
+
+            copyToClipboard: (text) => {
+                // 使用现代 Clipboard API
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        UI.showToast('复制成功');
+                    }).catch(err => {
+                        console.error('复制失败:', err);
+                        // 降级方案：使用传统方法
+                        UI.fallbackCopyToClipboard(text);
+                    });
+                } else {
+                    // 降级方案：使用传统方法
+                    UI.fallbackCopyToClipboard(text);
+                }
+            },
+
+            fallbackCopyToClipboard: (text) => {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    UI.showToast('复制成功');
+                } catch (err) {
+                    console.error('复制失败:', err);
+                }
+                document.body.removeChild(textArea);
+            },
+
+            showToast: (message) => {
+                // 移除已存在的toast
+                const existingToast = document.querySelector('.toast');
+                if (existingToast) {
+                    existingToast.remove();
+                }
+                
+                // 创建新的toast
+                const toast = document.createElement('div');
+                toast.className = 'toast';
+                toast.innerHTML = `
+                    <div class="toast-icon">
+                        <i class="fa fa-check"></i>
+                    </div>
+                    <div class="toast-text">${message}</div>
+                `;
+                document.body.appendChild(toast);
+                
+                // 显示toast
+                setTimeout(() => {
+                    toast.classList.add('show');
+                }, 10);
+                
+                // 2秒后隐藏并移除toast
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 300);
+                }, 2000);
+            },
+
+            toggleServiceStatus: (serviceId, action) => {
+                const service = State.getService(serviceId);
+                if (!service) return;
+                
+                // 更新服务状态
+                if (action === 'online') {
+                    service.status = 'API已上线';
+                } else if (action === 'offline') {
+                    service.status = 'API未上线';
+                }
+                
+                // 重新渲染内容，以更新按钮、状态标签和相关交互
+                UI.renderContent();
+            },
+
+            // --- 服务编辑页面相关函数 ---
+            openServiceEdit: (serviceId) => {
+                State.serviceEditMode = true;
+                UI.renderContent();
+            },
+
+            closeServiceEdit: () => {
+                State.serviceEditMode = false;
+                UI.renderContent();
+            },
+
+            setServiceMethod: (method) => {
+                const service = State.getService(State.activeServiceId);
+                if (!service) return;
+                service.method = method;
+                UI.renderContent();
+            },
+
+            saveServiceEdit: (serviceId) => {
+                const service = State.getService(serviceId);
+                if (!service) return;
+                
+                // 获取编辑后的数据
+                const nameInput = document.getElementById('edit-service-name');
+                const pathInput = document.getElementById('edit-service-path');
+                const timeoutInput = document.getElementById('edit-service-timeout');
+                // 响应内容使用可视化编辑器，暂时保持原有数据不变
+                // 后续可以实现从可视化编辑器提取数据并转换为JSON字符串
+                
+                if (nameInput) service.name = nameInput.value.trim();
+                if (pathInput) service.path = pathInput.value.trim();
+                if (timeoutInput) service.timeout = parseInt(timeoutInput.value) || 10000;
+                // responseJson 保持原有值，可视化编辑器目前为只读展示
+                
+                // 关闭编辑模式
+                State.serviceEditMode = false;
+                UI.renderContent();
+            },
+
+            saveAndPublishService: (serviceId) => {
+                const service = State.getService(serviceId);
+                if (!service) return;
+                
+                // 先保存数据
+                UI.saveServiceEdit(serviceId);
+                
+                // 然后上线
+                service.status = 'API已上线';
+                UI.renderContent();
+            },
+
+            // --- 弹窗逻辑 ---
+
+            openBindModal: () => {
+                const app = State.getApp(State.activeAppId);
+                // 初始化选中状态：复制当前应用的绑定列表
+                State.tempSelectedServices = new Set(app.bindings);
+                UI.renderModalTree();
+                document.getElementById('bind-modal').classList.remove('hidden');
+            },
+
+            closeBindModal: () => {
+                document.getElementById('bind-modal').classList.add('hidden');
+            },
+
+            renderModalTree: () => {
+                const container = document.getElementById('modal-tree-root');
+                container.innerHTML = '';
+                
+                SERVICE_DATA.forEach(folder => {
+                    // 文件夹标题
+                    const fEl = document.createElement('div');
+                    fEl.className = 'modal-folder';
+                    fEl.innerHTML = `<span class="icon-folder"><i class="fa fa-folder"></i></span> ${folder.name}`;
+                    container.appendChild(fEl);
+
+                    // 子项（带复选框）
+                    const childDiv = document.createElement('div');
+                    childDiv.className = 'modal-children';
+                    folder.children.forEach(item => {
+                        const row = document.createElement('div');
+                        const isChecked = State.tempSelectedServices.has(item.id);
+                        row.className = `checkbox-row ${isChecked ? 'checked' : ''}`;
+                        row.innerHTML = `
+                            <div class="checkbox-custom"></div>
+                            <span class="api-badge-mini">API</span> ${item.name}
+                        `;
+                        row.onclick = () => {
+                            if (State.tempSelectedServices.has(item.id)) {
+                                State.tempSelectedServices.delete(item.id);
+                            } else {
+                                State.tempSelectedServices.add(item.id);
+                            }
+                            UI.renderModalTree(); // 重新渲染以更新勾选状态
+                        };
+                        childDiv.appendChild(row);
+                    });
+                    container.appendChild(childDiv);
+                });
+            },
+
+            saveBindings: () => {
+                const app = State.getApp(State.activeAppId);
+                if (!app) return;
+                
+                // 使用双向绑定更新函数
+                const newServiceIds = Array.from(State.tempSelectedServices);
+                State.updateBindings(State.activeAppId, newServiceIds);
+                
+                // 重新渲染详情页
+                UI.renderContent();
+                UI.closeBindModal();
+            },
+
+            // --- 绑定应用弹窗逻辑（服务绑定应用）---
+            openBindAppModal: () => {
+                const service = State.getService(State.activeServiceId);
+                if (!service) return;
+                
+                // 初始化选中状态：复制当前服务的绑定应用列表
+                State.tempSelectedApps = new Set(service.boundAppIds || []);
+                UI.renderAppModalTree();
+                document.getElementById('bind-app-modal').classList.remove('hidden');
+            },
+
+            closeBindAppModal: () => {
+                document.getElementById('bind-app-modal').classList.add('hidden');
+            },
+
+            renderAppModalTree: () => {
+                const container = document.getElementById('modal-app-tree-root');
+                container.innerHTML = '';
+                
+                APP_DATA.forEach(folder => {
+                    // 文件夹标题
+                    const fEl = document.createElement('div');
+                    fEl.className = 'modal-folder';
+                    fEl.innerHTML = `<span class="icon-folder"><i class="fa fa-folder"></i></span> ${folder.name}`;
+                    container.appendChild(fEl);
+
+                    // 子项（带复选框）
+                    const childDiv = document.createElement('div');
+                    childDiv.className = 'modal-children';
+                    folder.children.forEach(item => {
+                        const row = document.createElement('div');
+                        const isChecked = State.tempSelectedApps.has(item.id);
+                        row.className = `checkbox-row ${isChecked ? 'checked' : ''}`;
+                        row.innerHTML = `
+                            <div class="checkbox-custom"></div>
+                            <span class="icon-file" style="color:#5c8dff;"><i class="fa fa-cube"></i></span> ${item.name}
+                        `;
+                        row.onclick = () => {
+                            if (State.tempSelectedApps.has(item.id)) {
+                                State.tempSelectedApps.delete(item.id);
+                            } else {
+                                State.tempSelectedApps.add(item.id);
+                            }
+                            UI.renderAppModalTree(); // 重新渲染以更新勾选状态
+                        };
+                        childDiv.appendChild(row);
+                    });
+                    container.appendChild(childDiv);
+                });
+            },
+
+            saveAppBindings: () => {
+                const service = State.getService(State.activeServiceId);
+                if (!service) return;
+                
+                // 获取新选中的应用ID列表
+                const newAppIds = Array.from(State.tempSelectedApps);
+                
+                // 获取旧的应用ID列表
+                const oldAppIds = service.boundAppIds || [];
+                
+                // 更新服务的 boundAppIds
+                service.boundAppIds = newAppIds;
+                
+                // 更新所有相关应用的 bindings
+                // 1. 从旧的应用中移除该服务
+                oldAppIds.forEach(appId => {
+                    const app = State.getApp(appId);
+                    if (app) {
+                        if (!app.bindings) {
+                            app.bindings = [];
+                        }
+                        const index = app.bindings.indexOf(service.id);
+                        if (index > -1) {
+                            app.bindings.splice(index, 1);
+                        }
+                    }
+                });
+                
+                // 2. 向新的应用中添加该服务
+                newAppIds.forEach(appId => {
+                    const app = State.getApp(appId);
+                    if (app) {
+                        if (!app.bindings) {
+                            app.bindings = [];
+                        }
+                        if (app.bindings.indexOf(service.id) === -1) {
+                            app.bindings.push(service.id);
+                        }
+                    }
+                });
+                
+                // 同步服务的 boundApps 显示数据
+                State.syncServiceBoundApps(service);
+                
+                // 重新渲染详情页
+                UI.renderContent();
+                UI.closeBindAppModal();
+            },
+
+            // --- 新建应用弹窗逻辑 ---
+            openNewAppModal: () => {
+                // 生成随机UUID作为应用路径
+                const uuid = generateUUID();
+                const pathInput = document.getElementById('new-app-path');
+                pathInput.value = `service/${uuid}`;
+                
+                // 重置表单
+                document.getElementById('new-app-name').value = '';
+                document.getElementById('new-app-desc').value = '';
+                
+                // 初始化所属目录下拉框
+                const folderSelect = document.getElementById('new-app-folder');
+                folderSelect.innerHTML = '<option value="all">所有应用</option>';
+                APP_DATA.forEach(folder => {
+                    const option = document.createElement('option');
+                    option.value = folder.id;
+                    option.textContent = folder.name;
+                    folderSelect.appendChild(option);
+                });
+                
+                // A/B方案都隐藏应用路径和应用认证方式
+                const pathItem = pathInput.closest('.form-item');
+                const authItem = document.getElementById('new-app-auth').closest('.form-item');
+                
+                // 隐藏应用路径和应用认证方式
+                pathItem.style.display = 'none';
+                authItem.style.display = 'none';
+                
+                document.getElementById('new-app-modal').classList.remove('hidden');
+            },
+
+            closeNewAppModal: () => {
+                document.getElementById('new-app-modal').classList.add('hidden');
+            },
+
+            saveNewApp: () => {
+                const name = document.getElementById('new-app-name').value.trim();
+                if (!name) {
+                    alert('请输入应用名称');
+                    return;
+                }
+                
+                const folderId = document.getElementById('new-app-folder').value;
+                const desc = document.getElementById('new-app-desc').value.trim();
+                
+                // A/B方案都使用默认值（因为字段已隐藏）
+                const uuid = generateUUID();
+                const path = `service/${uuid}`;
+                const authType = 'none';
+                
+                // 生成新的应用ID
+                const newAppId = 'a' + Date.now();
+                
+                // 创建新应用对象
+                const newApp = {
+                    id: newAppId,
+                    name: name,
+                    type: 'app',
+                    creator: 'admin',
+                    time: new Date().toISOString().split('T')[0],
+                    bindings: [],
+                    path: path,
+                    desc: desc,
+                    authType: authType
+                };
+                
+                // 添加到对应的文件夹
+                if (folderId === 'all') {
+                    // 如果选择"所有应用"，添加到第一个文件夹
+                    if (APP_DATA.length > 0) {
+                        APP_DATA[0].children.push(newApp);
+                        // 确保文件夹展开
+                        State.expandedFolders.add(APP_DATA[0].id);
+                    } else {
+                        // 如果没有文件夹，创建一个
+                        APP_DATA.push({
+                            id: 'af' + Date.now(),
+                            name: '所有应用',
+                            type: 'folder',
+                            children: [newApp]
+                        });
+                    }
+                } else {
+                    // 添加到指定文件夹
+                    const folder = APP_DATA.find(f => f.id === folderId);
+                    if (folder) {
+                        folder.children.push(newApp);
+                        State.expandedFolders.add(folder.id);
+                    }
+                }
+                
+                // 设置新应用为当前激活项
+                State.activeAppId = newAppId;
+                
+                // 关闭弹窗
+                UI.closeNewAppModal();
+                
+                // 切换到应用列表标签
+                if (State.currTab !== 'app') {
+                    UI.switchTab('app');
+                }
+                
+                // 重新渲染树
+                UI.renderTree('app');
+                
+                // 进入应用编辑页
+                State.appEditMode = true;
+                UI.renderContent();
+            },
+
+            // --- 应用编辑页面相关函数 ---
+            openAppEdit: (appId) => {
+                State.appEditMode = true;
+                UI.renderContent();
+            },
+
+            closeAppEdit: () => {
+                State.appEditMode = false;
+                UI.renderContent();
+            },
+
+            setAppAuthType: (authType) => {
+                const app = State.getApp(State.activeAppId);
+                if (!app) return;
+                app.authType = authType;
+                UI.renderContent();
+            },
+
+            saveAppEdit: (appId) => {
+                const app = State.getApp(appId);
+                if (!app) return;
+                
+                // 获取编辑后的数据
+                const nameInput = document.getElementById('edit-app-name');
+                const pathInput = document.getElementById('edit-app-path');
+                
+                if (nameInput) app.name = nameInput.value.trim();
+                if (pathInput) {
+                    // 更新应用路径
+                    const pathPrefix = app.path ? app.path.substring(0, app.path.lastIndexOf('/') + 1) : 'service/publish/';
+                    app.path = pathPrefix + pathInput.value.trim();
+                }
+                
+                // 关闭编辑模式
+                State.appEditMode = false;
+                UI.renderContent();
+            },
+
+            // --- B方案应用详情页编辑/保存/取消 ---
+            editAppDetail: (appId) => {
+                if (State.currentABTest !== 'B') return;
+                // 设置为编辑状态
+                State.appDetailEditMode[appId] = true;
+                // 重新渲染内容
+                UI.renderContent();
+            },
+
+            saveAppDetail: (appId) => {
+                if (State.currentABTest !== 'B') return;
+                
+                const app = State.getApp(appId);
+                if (!app) return;
+                
+                // 获取认证方式
+                const checkedRadio = document.querySelector('.app-detail-radio-item.checked:not(.disabled)');
+                if (checkedRadio) {
+                    app.authType = checkedRadio.dataset.value || 'none';
+                }
+                
+                // 退出编辑状态
+                State.appDetailEditMode[appId] = false;
+                
+                // 重新渲染内容
+                UI.renderContent();
+                
+                // 可以添加保存成功的提示
+                console.log('应用详情已保存');
+            },
+
+            cancelAppDetail: (appId) => {
+                if (State.currentABTest !== 'B') return;
+                // 退出编辑状态，不保存
+                State.appDetailEditMode[appId] = false;
+                // 重新渲染内容，恢复原始状态
+                UI.renderContent();
+            },
+
+            // 初始化B方案应用详情页的单选按钮事件
+            initAppDetailRadio: () => {
+                if (State.currentABTest !== 'B') return;
+                
+                document.querySelectorAll('.app-detail-radio-item:not(.disabled)').forEach(item => {
+                    item.onclick = function() {
+                        if (this.classList.contains('disabled')) return;
+                        document.querySelectorAll('.app-detail-radio-item').forEach(r => r.classList.remove('checked'));
+                        this.classList.add('checked');
+                    };
+                });
+            },
+
+            // --- 新建服务弹窗逻辑 ---
+            openNewServiceModal: () => {
+                // 重置表单
+                document.getElementById('new-service-name').value = '接口服务170';
+                document.getElementById('new-service-desc').value = '';
+                
+                // 初始化所属目录下拉框
+                const folderSelect = document.getElementById('new-service-folder');
+                folderSelect.innerHTML = '<option value="all">所有服务</option>';
+                SERVICE_DATA.forEach(folder => {
+                    const option = document.createElement('option');
+                    option.value = folder.id;
+                    option.textContent = folder.name;
+                    folderSelect.appendChild(option);
+                });
+                
+                // 重置功能场景选择（默认选中数据查询）
+                document.querySelectorAll('.scenario-card').forEach(card => {
+                    card.classList.remove('checked');
+                });
+                document.getElementById('scenario-query').classList.add('checked');
+                
+                // 绑定功能场景卡片点击事件
+                document.querySelectorAll('.scenario-card:not(.disabled)').forEach(card => {
+                    card.onclick = function() {
+                        if (this.classList.contains('disabled')) return;
+                        document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('checked'));
+                        this.classList.add('checked');
+                    };
+                });
+                
+                // 重置"敬请期待"部分
+                const comingSoonContent = document.getElementById('coming-soon-content');
+                comingSoonContent.classList.add('hidden');
+                const comingSoonHeader = document.querySelector('.coming-soon-header span');
+                if (comingSoonHeader) {
+                    comingSoonHeader.textContent = '▶ 敬请期待';
+                }
+                
+                document.getElementById('new-service-modal').classList.remove('hidden');
+            },
+
+            closeNewServiceModal: () => {
+                document.getElementById('new-service-modal').classList.add('hidden');
+            },
+
+            saveNewService: () => {
+                const name = document.getElementById('new-service-name').value.trim();
+                if (!name) {
+                    alert('请输入服务名称');
+                    return;
+                }
+                
+                const folderId = document.getElementById('new-service-folder').value;
+                const desc = document.getElementById('new-service-desc').value.trim();
+                
+                // 获取选中的功能场景
+                const selectedScenario = document.querySelector('.scenario-card.checked');
+                const scenarioType = selectedScenario ? selectedScenario.dataset.value : 'query';
+                
+                // 生成新的服务ID
+                const newServiceId = 's' + Date.now();
+                
+                // 创建新服务对象
+                const newService = {
+                    id: newServiceId,
+                    name: name,
+                    type: 'service',
+                    status: 'API未上线',
+                    path: '/api/' + newServiceId.toLowerCase(),
+                    method: scenarioType === 'query' ? 'GET' : 'POST',
+                    desc: desc,
+                    scenarioType: scenarioType,
+                    boundAppIds: [], // 绑定的应用ID数组（用于数据同步）
+                    boundApps: [] // 显示用的绑定应用列表
+                };
+                
+                // 添加到对应的文件夹
+                if (folderId === 'all') {
+                    // 如果选择"所有服务"，添加到第一个文件夹
+                    if (SERVICE_DATA.length > 0) {
+                        SERVICE_DATA[0].children.push(newService);
+                        // 确保文件夹展开
+                        State.expandedFolders.add(SERVICE_DATA[0].id);
+                    } else {
+                        // 如果没有文件夹，创建一个
+                        SERVICE_DATA.push({
+                            id: 'f' + Date.now(),
+                            name: '所有服务',
+                            type: 'folder',
+                            children: [newService]
+                        });
+                    }
+                } else {
+                    // 添加到指定文件夹
+                    const folder = SERVICE_DATA.find(f => f.id === folderId);
+                    if (folder) {
+                        folder.children.push(newService);
+                        State.expandedFolders.add(folder.id);
+                    }
+                }
+                
+                // 设置新服务为当前激活项
+                State.activeServiceId = newServiceId;
+                
+                // 切换到服务列表标签
+                if (State.currTab !== 'service') {
+                    UI.switchTab('service');
+                }
+                
+                // 重新渲染树和内容
+                UI.renderTree('service');
+                UI.renderContent();
+                
+                // 关闭弹窗
+                UI.closeNewServiceModal();
+            },
+
+            toggleComingSoon: () => {
+                const content = document.getElementById('coming-soon-content');
+                const header = document.querySelector('.coming-soon-header span');
+                
+                if (content.classList.contains('hidden')) {
+                    content.classList.remove('hidden');
+                    if (header) {
+                        header.textContent = '▼ 敬请期待';
+                    }
+                } else {
+                    content.classList.add('hidden');
+                    if (header) {
+                        header.textContent = '▶ 敬请期待';
+                    }
+                }
+            }
+        };
+
+        // 在渲染内容后初始化单选按钮事件
+        const originalRenderContent = UI.renderContent;
+        UI.renderContent = function() {
+            originalRenderContent.call(this);
+            // 延迟一下确保DOM已渲染
+            setTimeout(() => {
+                UI.initAppDetailRadio();
+            }, 0);
+        };
+
+        UI.init();
+    </script>
+</body>
+</html>

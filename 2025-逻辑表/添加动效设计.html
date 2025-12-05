@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B端添加动效原型（双排序方案）</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            width: 600px;
+            margin-bottom: 20px;
+        }
+        
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .control-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            margin-right: 15px;
+        }
+        
+        .buttons, .sort-options {
+            display: flex;
+            gap: 10px;
+        }
+
+        .add-btn, .sort-btn {
+            padding: 12px 18px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            background-color: #3498db;
+            transition: transform 0.2s, background-color 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .add-btn:hover, .sort-btn:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .add-btn:active, .sort-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* --- Radio Button 样式 --- */
+        .radio-container {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .radio-label {
+            padding: 12px 18px;
+            background-color: #9b59b6;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .radio-label:hover {
+            background-color: #8e44ad;
+            transform: translateY(-2px);
+        }
+
+        /* 隐藏原始的 radio input */
+        input[type="radio"] {
+            display: none;
+        }
+        
+        /* 选中状态的 label 样式 */
+        input[type="radio"]:checked + .radio-label {
+            background-color: #8e44ad;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transform: translateY(0);
+        }
+
+        .list-container {
+            width: 600px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .list-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid #eee;
+            background-color: #fff;
+            font-size: 16px;
+            color: #555;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
+            position: relative;
+        }
+
+        .list-item:last-child {
+            border-bottom: none;
+        }
+
+        .item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .item-name {
+            font-weight: 500;
+        }
+
+        .item-time {
+            font-size: 12px;
+            color: #999;
+        }
+
+        /* --- 弹窗样式 --- */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .modal-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transform: scale(0.8);
+            transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            text-align: center;
+        }
+
+        .modal.active {
+            display: flex;
+            opacity: 1;
+        }
+        
+        .modal.active .modal-content {
+            transform: scale(1);
+        }
+
+        /* --- 整体高亮样式 --- */
+        .items-highlighted {
+            background-color: #eaf8f1;
+            transition: background-color 0.8s ease;
+        }
+        
+        /* --- 方案一: 平滑渐入 --- */
+        .option-A-enter {
+            transform: translateY(20px);
+            opacity: 0;
+            transition: transform 0.5s ease-out, opacity 0.5s ease-out;
+        }
+
+        /* --- 方案二: 弹性缩放 --- */
+        .option-B-scale {
+            animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+
+        .option-B-pulse {
+            animation: pulse-border 1s forwards;
+        }
+        
+        @keyframes bounceIn {
+            0% { transform: scale(0.8); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(52, 152, 219, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0); }
+        }
+
+        /* --- 方案三: 分步注入与列序重排 --- */
+        .option-C-slide-in {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+            opacity: 0;
+        }
+
+        /* --- 悬浮按钮容器样式 --- */
+        .floating-button-container {
+            position: fixed;
+            top: 50%; /* 垂直居中 */
+            right: 0;
+            transform: translate(-15px, -50%); /* 微调位置，居中对齐 */
+            z-index: 1000;
+        }
+
+        .sort-prompt-button {
+            padding: 10px 15px;
+            background-color: #34495e;
+            color: #fff;
+            font-size: 14px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            white-space: nowrap; /* 防止文本换行 */
+        }
+        
+        .sort-prompt-button.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>B端列表管理原型</h1>
+    </div>
+
+    <div class="controls">
+        <div class="control-row">
+            <span class="control-label">添加动效：</span>
+            <div class="buttons">
+                <button class="add-btn" onclick="showModal('A')">A. 平滑渐入</button>
+                <button class="add-btn" onclick="showModal('B')">B. 弹性缩放</button>
+                <button class="add-btn" onclick="showModal('C')">C. 列序重排</button>
+            </div>
+        </div>
+        <div class="control-row">
+            <span class="control-label">排序类型：</span>
+            <div class="sort-options">
+                <button class="sort-btn active" id="sortNameBtn" onclick="setSortType('name')">按名称排序</button>
+                <button class="sort-btn" id="sortTimeBtn" onclick="setSortType('time')">按创建时间排序</button>
+            </div>
+        </div>
+        <div class="control-row">
+            <span class="control-label">排序方案：</span>
+            <div class="radio-container">
+                <input type="radio" id="scheme1" name="sort-scheme" value="scheme1" checked onchange="setSortScheme(this.value)">
+                <label for="scheme1" class="radio-label">方案一</label>
+                
+                <input type="radio" id="scheme2" name="sort-scheme" value="scheme2" onchange="setSortScheme(this.value)">
+                <label for="scheme2" class="radio-label">方案二</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="list-container" id="list">
+        </div>
+    
+    <div class="floating-button-container">
+        <button id="sortPromptBtn" class="sort-prompt-button">这些表将按规则自动排序</button>
+    </div>
+
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h3>生成新条目</h3>
+            <p>点击按钮将生成5个新条目。</p>
+            <button class="add-btn" id="generateBtn">生成5张表</button>
+        </div>
+    </div>
+
+    <script>
+        const list = document.getElementById('list');
+        const modal = document.getElementById('modal');
+        const generateBtn = document.getElementById('generateBtn');
+        const sortPromptBtn = document.getElementById('sortPromptBtn');
+        let currentEffect = '';
+        let currentSortType = 'name';
+        let currentSortScheme = 'scheme1';
+        let data = [];
+        let itemCounter = 0;
+
+        // 辅助函数：生成随机名称
+        function generateRandomName() {
+            const adjectives = ['项目', '数据', '报告', '文件', '表格'];
+            const nouns = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+            const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+            const noun = nouns[Math.floor(Math.random() * nouns.length)];
+            const number = Math.floor(Math.random() * 1000);
+            return `${adjective}-${noun}-${number}`;
+        }
+
+        // 辅助函数：格式化时间
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            const h = String(date.getHours()).padStart(2, '0');
+            const min = String(date.getMinutes()).padStart(2, '0');
+            return `${y}-${m}-${d} ${h}:${min}`;
+        }
+
+        // 渲染列表：根据数据数组重新生成DOM
+        function renderList() {
+            list.innerHTML = '';
+            const fragment = document.createDocumentFragment();
+            data.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'list-item';
+                itemDiv.innerHTML = `
+                    <div class="item-info">
+                        <span class="item-name">${item.name}</span>
+                        <span class="item-time">创建时间：${formatTime(item.creationTime)}</span>
+                    </div>
+                `;
+                itemDiv.setAttribute('data-id', item.id);
+                fragment.appendChild(itemDiv);
+            });
+            list.appendChild(fragment);
+        }
+
+        // 初始化数据和渲染
+        function initializeData() {
+            for (let i = 0; i < 10; i++) {
+                itemCounter++;
+                data.push({
+                    id: itemCounter,
+                    name: generateRandomName(),
+                    creationTime: Date.now() - (10 - i) * 60000
+                });
+            }
+            sortData();
+            renderList();
+        }
+        
+        // 排序数据数组
+        function sortData() {
+            if (currentSortType === 'name') {
+                data.sort((a, b) => a.name.localeCompare(b.name));
+            } else if (currentSortType === 'time') {
+                data.sort((a, b) => b.creationTime - a.creationTime);
+            }
+        }
+        
+        function setSortType(type) {
+            currentSortType = type;
+            document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`sort${type.charAt(0).toUpperCase() + type.slice(1)}Btn`).classList.add('active');
+            sortData();
+            renderList();
+        }
+        
+        function setSortScheme(scheme) {
+            currentSortScheme = scheme;
+        }
+
+        function showModal(effect) {
+            currentEffect = effect;
+            modal.classList.add('active');
+        }
+
+        modal.addEventListener('click', (e) => {
+            if (e.target.id === 'modal') {
+                modal.classList.remove('active');
+            }
+        });
+
+        generateBtn.addEventListener('click', () => {
+            modal.classList.remove('active');
+            
+            const newItemsData = [];
+            for (let i = 0; i < 5; i++) {
+                itemCounter++;
+                newItemsData.push({
+                    id: itemCounter,
+                    name: generateRandomName(),
+                    creationTime: Date.now()
+                });
+            }
+
+            if (currentSortScheme === 'scheme1') {
+                data.unshift(...newItemsData);
+                sortData();
+                renderList();
+                
+                const newItemsInDom = newItemsData.map(item => list.querySelector(`[data-id="${item.id}"]`));
+                newItemsInDom.forEach(item => item.classList.add('items-highlighted'));
+                setTimeout(() => {
+                    newItemsInDom.forEach(item => item.classList.remove('items-highlighted'));
+                }, 800);
+                
+            } else if (currentSortScheme === 'scheme2') {
+                data.unshift(...newItemsData);
+                
+                const newItemsFragment = document.createDocumentFragment();
+                newItemsData.forEach(item => {
+                    const newItemDiv = document.createElement('div');
+                    newItemDiv.className = 'list-item';
+                    newItemDiv.innerHTML = `
+                        <div class="item-info">
+                            <span class="item-name">${item.name}</span>
+                            <span class="item-time">创建时间：${formatTime(item.creationTime)}</span>
+                        </div>
+                    `;
+                    newItemDiv.setAttribute('data-id', item.id);
+                    if (currentEffect === 'A') {
+                        newItemDiv.classList.add('option-A-enter');
+                    } else if (currentEffect === 'B') {
+                        newItemDiv.classList.add('option-B-scale');
+                        newItemDiv.classList.add('option-B-pulse');
+                    } else if (currentEffect === 'C') {
+                         const oldItems = Array.from(list.children);
+                         oldItems.forEach(item => {
+                             item.style.transform = `translateY(${5 * 49}px)`;
+                         });
+                         newItemDiv.classList.add('option-C-slide-in');
+                    }
+                    newItemsFragment.appendChild(newItemDiv);
+                });
+                list.prepend(newItemsFragment);
+                
+                setTimeout(() => {
+                    const newItemsInDom = Array.from(list.children).slice(0, 5);
+                    if (currentEffect === 'A') {
+                        newItemsInDom.forEach(item => {
+                            item.style.transform = 'translateY(0)';
+                            item.style.opacity = '1';
+                        });
+                    } else if (currentEffect === 'C') {
+                        const oldItems = Array.from(list.children).slice(5);
+                        oldItems.forEach(item => {
+                            item.style.transform = 'translateY(0)';
+                        });
+                        newItemsInDom.forEach(item => {
+                            item.style.transform = 'translateX(0)';
+                            item.style.opacity = '1';
+                        });
+                    }
+
+                    newItemsInDom.forEach(item => {
+                        item.classList.add('items-highlighted');
+                    });
+                    
+                    // 新增逻辑：显示悬浮按钮
+                    sortPromptBtn.classList.add('visible');
+
+                    // 绑定悬浮按钮的点击事件
+                    sortPromptBtn.onclick = () => {
+                        sortPromptBtn.classList.remove('visible');
+                        newItemsInDom.forEach(item => {
+                            item.classList.remove('items-highlighted');
+                        });
+                        sortData();
+                        renderList();
+                        sortPromptBtn.onclick = null;
+                    };
+                }, 10);
+            }
+        });
+        
+        window.onload = initializeData;
+    </script>
+</body>
+</html>

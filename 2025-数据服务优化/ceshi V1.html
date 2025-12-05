@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FineDataLink Interface Reproduction</title>
+    <!-- 引入 FontAwesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* --- 全局重置与变量 --- */
+        :root {
+            --primary-color: #3370ff;
+            --sidebar-bg: #0f1b36;
+            --sidebar-hover: #1e2b4a;
+            --sidebar-active: #3370ff;
+            --bg-color: #f5f6f7;
+            --white: #ffffff;
+            --text-main: #1f2329;
+            --text-secondary: #646a73;
+            --text-disable: #8f959e;
+            --border-color: #dee0e3;
+            --success-green: #00b62a;
+            --tag-bg: #eef3fe;
+            --tag-text: #3370ff;
+            --code-bg: #fafafa;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+            font-size: 14px;
+            color: var(--text-main);
+            background-color: var(--bg-color);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+        }
+
+        /* --- 左侧主导航栏 (Main Sidebar) --- */
+        .main-sidebar {
+            width: 64px;
+            background-color: var(--sidebar-bg);
+            color: #a6aaae;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 16px;
+            z-index: 10;
+            flex-shrink: 0;
+        }
+
+        .logo-area {
+            margin-bottom: 20px;
+            font-size: 20px;
+            color: var(--primary-color);
+        }
+
+        .nav-item {
+            width: 100%;
+            height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+            gap: 4px;
+            color: #8f959e;
+        }
+
+        .nav-item:hover {
+            color: #fff;
+            background-color: var(--sidebar-hover);
+        }
+
+        .nav-item.active {
+            background-color: rgba(51, 112, 255, 0.1);
+            color: #fff;
+            background-color: #1a2642; /* slight lighter mimic */
+            border-left: 3px solid var(--primary-color);
+        }
+        
+        .nav-item.active i {
+            color: var(--primary-color);
+        }
+
+        .nav-item i {
+            font-size: 18px;
+            margin-bottom: 2px;
+        }
+
+        /* --- 左侧子导航栏 (Sub Sidebar - Service List) --- */
+        .sub-sidebar {
+            width: 240px;
+            background-color: var(--white);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sub-nav-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            height: 48px;
+            align-items: center;
+            padding: 0 16px;
+        }
+
+        .tab-item {
+            margin-right: 24px;
+            cursor: pointer;
+            height: 48px;
+            line-height: 48px;
+            position: relative;
+            color: var(--text-secondary);
+        }
+
+        .tab-item.active {
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .tab-item.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: var(--primary-color);
+        }
+
+        .list-header {
+            padding: 16px 16px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .search-box {
+            margin: 8px 16px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            height: 28px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 0 28px 0 8px;
+            font-size: 12px;
+            outline: none;
+        }
+        
+        .search-box input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .search-box i {
+            position: absolute;
+            right: 8px;
+            top: 7px;
+            color: var(--text-disable);
+            font-size: 12px;
+        }
+
+        .tree-wrapper {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+
+        .tree-node {
+            display: flex;
+            align-items: center;
+            padding: 6px 16px;
+            cursor: pointer;
+            color: var(--text-main);
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tree-node:hover {
+            background-color: #f2f3f5;
+        }
+
+        .tree-node.active {
+            background-color: #eef3fe;
+            color: var(--primary-color);
+        }
+        
+        /* Indentation helpers */
+        .indent-1 { padding-left: 32px; }
+        .indent-2 { padding-left: 48px; }
+        .indent-3 { padding-left: 64px; }
+
+        .tree-icon {
+            color: #ffb800; /* Folder color */
+            margin-right: 8px;
+            margin-left: 4px;
+            width: 14px;
+            text-align: center;
+        }
+
+        .file-icon {
+            color: #9daabf; /* Default file icon color */
+            margin-right: 8px;
+            margin-left: 4px;
+            font-size: 12px;
+        }
+        
+        .active .file-icon {
+            color: var(--primary-color);
+        }
+        
+        .api-badge {
+            font-size: 10px;
+            background: #7c4dff;
+            color: white;
+            padding: 1px 3px;
+            border-radius: 2px;
+            margin-right: 4px;
+            transform: scale(0.8);
+        }
+
+        .arrow {
+            font-size: 10px;
+            color: var(--text-disable);
+            width: 12px;
+            transition: transform 0.2s;
+        }
+        
+        .arrow.down {
+            transform: rotate(90deg);
+        }
+
+        /* --- 主内容区域 (Main Content) --- */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--white);
+            overflow: hidden;
+        }
+
+        /* 顶部 Header */
+        .top-header {
+            height: 48px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            background: #fff; /* Often slightly distinct or same */
+            /* border-bottom: 1px solid var(--border-color); In some designs */
+            /* The screenshot shows a global header above everything, let's mimic the breadcrumb/toolbar style */
+        }
+        
+        .global-header {
+            position: absolute;
+            top: 0; left: 64px; right:0;
+            height: 48px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            background: linear-gradient(to right, #fcfcfd, #eff4ff);
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .gh-left {
+            display: flex;
+            align-items: center;
+            font-weight: bold;
+            font-size: 16px;
+            color: var(--primary-color);
+        }
+        
+        .gh-right {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            font-size: 12px;
+            color: var(--text-main);
+        }
+        
+        /* 内容滚动区 */
+        .content-scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            margin-top: 48px; /* Offset for global header if absolute */
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+        }
+
+        .title-section h2 {
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .status-tag {
+            font-size: 12px;
+            color: var(--success-green);
+            border: 1px solid var(--success-green);
+            padding: 1px 6px;
+            border-radius: 2px;
+            font-weight: normal;
+        }
+        
+        .api-purple-tag {
+            background-color: #7b61ff;
+            color: white;
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .desc-text {
+            color: var(--text-secondary);
+            font-size: 12px;
+            line-height: 1.5;
+            max-width: 800px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            height: 32px;
+            padding: 0 15px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background: white;
+            color: var(--text-main);
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn.primary {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        
+        .btn.primary:hover {
+            background: #295ed9;
+        }
+
+        /* 表单详情 */
+        .section-title {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 16px;
+            margin-top: 24px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .section-title i {
+            margin-right: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            row-gap: 20px;
+            margin-bottom: 24px;
+            font-size: 13px;
+        }
+
+        .form-label {
+            color: var(--text-secondary);
+        }
+
+        .form-value {
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .link-text {
+            color: var(--primary-color);
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        /* 字段映射 Tag */
+        .mapping-tag {
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 12px;
+            color: var(--text-main);
+        }
+        
+        .mapping-tag span.symbol {
+            color: var(--primary-color); /* Teal/Green from image logic for symbol # */
+            margin-right: 4px;
+            font-weight: bold;
+        }
+        
+        .mapping-tag span.symbol-T {
+            color: var(--primary-color);
+        }
+        
+        .mapping-tag span.symbol-hash {
+            color: #00b62a;
+        }
+
+        /* API 接口配置区域 */
+        .api-config-box {
+            border-top: 1px solid #eee;
+            padding-top: 16px;
+        }
+
+        .app-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            border: 1px solid var(--border-color);
+            padding: 4px 12px;
+            border-radius: 4px;
+            margin-right: 8px;
+        }
+        
+        .app-tag i {
+            color: var(--primary-color);
+        }
+
+        /* 代码块/Tabs */
+        .code-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 12px;
+        }
+        
+        .code-tab {
+            padding: 8px 16px;
+            color: var(--text-main);
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        
+        .code-tab.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+        
+        .tab-btn {
+            display: inline-block;
+            padding: 4px 12px;
+            border: 1px solid #d0d7de;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            color: var(--primary-color);
+            background: #f0f6ff;
+            border-color: #cce0ff;
+        }
+
+        .code-editor-container {
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .editor-header {
+            background: #fafafa;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .editor-body {
+            padding: 12px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #24292e;
+            background-color: #ffffff;
+        }
+        
+        /* Fake syntax highlighting classes */
+        .json-key { color: #24292e; }
+        .json-string { color: #a31515; } /* Reddish */
+        .json-string-val { color: #0b1124; }
+        .json-num { color: #098658; }
+        .comment { color: #a0a0a0; }
+        
+        /* Specific highlights from image */
+        .hl-green-bg {
+            background-color: #e6ffec;
+            padding: 0 2px;
+            border-radius: 2px;
+            color: #00b62a;
+        }
+        .hl-param {
+            color: #00b62a;
+        }
+        .hl-text {
+             color: var(--text-secondary);
+        }
+
+        /* Checkbox replacement */
+        .check-box-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+        .custom-check {
+            width: 14px;
+            height: 14px;
+            border: 1px solid var(--primary-color);
+            background-color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 2px;
+        }
+        .custom-check i {
+            color: white;
+            font-size: 10px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Top Global Header Overlay -->
+    <div class="global-header">
+        <div class="gh-left">
+            <i class="fa-solid fa-folder-tree" style="margin-right: 8px;"></i>
+            FineDataLink
+        </div>
+        <div class="gh-right">
+            <div style="background: #fff; padding: 4px 10px; border-radius: 20px; border:1px solid #eee;">
+                <span style="color:#3370ff">●</span> 管理系统 <i class="fa fa-caret-down"></i>
+            </div>
+            <i class="fa fa-bell"></i>
+            <i class="fa fa-question-circle"></i>
+            <div><i class="fa fa-user"></i> 用户名 <i class="fa fa-caret-down"></i></div>
+        </div>
+    </div>
+
+    <!-- 1. Main Sidebar (Icon Bar) -->
+    <aside class="main-sidebar" style="margin-top: 48px;">
+        <div class="nav-item">
+            <i class="fa-solid fa-gauge-high"></i>
+            <span>任务运维</span>
+        </div>
+        <div class="nav-item">
+            <i class="fa-solid fa-diagram-project"></i>
+            <span>数据管道</span>
+        </div>
+        <div class="nav-item">
+            <i class="fa-solid fa-code"></i>
+            <span>数据开发</span>
+        </div>
+        <div class="nav-item active">
+            <i class="fa-solid fa-server"></i>
+            <span>数据服务</span>
+        </div>
+        <div class="nav-item">
+            <i class="fa-solid fa-file-lines"></i>
+            <span>数据管理</span>
+        </div>
+    </aside>
+
+    <!-- 2. Sub Sidebar (Tree & List) -->
+    <aside class="sub-sidebar" style="margin-top: 48px;">
+        <div class="sub-nav-tabs">
+            <div class="tab-item active">服务列表</div>
+            <div class="tab-item">应用列表</div>
+        </div>
+        
+        <div class="list-header">
+            <span>服务列表</span>
+            <i class="fa fa-cog" style="cursor: pointer;"></i>
+        </div>
+
+        <div class="search-box">
+            <input type="text" placeholder="搜索API/文件夹">
+            <i class="fa fa-rotate"></i>
+        </div>
+
+        <div class="tree-wrapper">
+            <div class="tree-node">
+                <span class="arrow down"><i class="fa fa-caret-right"></i></span>
+                <span class="tree-icon"><i class="fa fa-folder"></i></span>
+                所有服务
+            </div>
+            
+            <div class="tree-node indent-1">
+                <span class="arrow down"><i class="fa fa-caret-right"></i></span>
+                <span class="tree-icon"><i class="fa fa-folder"></i></span>
+                文件夹1
+            </div>
+
+            <div class="tree-node indent-2">
+                <span class="arrow down"><i class="fa fa-caret-right"></i></span>
+                <span class="tree-icon"><i class="fa fa-folder"></i></span>
+                文件夹2
+            </div>
+
+            <div class="tree-node indent-2">
+                <span class="arrow down"><i class="fa fa-caret-right"></i></span>
+                <span class="tree-icon"><i class="fa fa-folder"></i></span>
+                文件夹3
+            </div>
+
+            <div class="tree-node active indent-3">
+                <span class="api-badge">API</span>
+                <span class="file-icon"><i class="fa fa-file"></i></span>
+                接口服务任务1
+            </div>
+
+            <div class="tree-node indent-3">
+                <span class="api-badge">API</span>
+                <span class="file-icon"><i class="fa fa-file-lines"></i></span>
+                编排服务任务1
+            </div>
+
+            <div class="tree-node indent-3">
+                <span class="api-badge">API</span>
+                <span class="file-icon"><i class="fa fa-file"></i></span>
+                任务3
+            </div>
+
+            <div class="tree-node indent-2">
+                <span class="arrow"><i class="fa fa-caret-right"></i></span>
+                <span class="tree-icon"><i class="fa fa-folder"></i></span>
+                文件夹4
+            </div>
+             <div class="tree-node indent-2">
+                <span class="api-badge">API</span>
+                <span class="file-icon"><i class="fa fa-file"></i></span>
+                任务4
+            </div>
+             <div class="tree-node indent-2">
+                <span class="api-badge">API</span>
+                <span class="file-icon"><i class="fa fa-file"></i></span>
+                任务5
+            </div>
+            
+            <div class="tree-node indent-1">
+                <span class="arrow"><i class="fa fa-caret-right"></i></span>
+                <span class="tree-icon"><i class="fa fa-folder"></i></span>
+                文件夹7
+            </div>
+
+        </div>
+    </aside>
+
+    <!-- 3. Main Content Area -->
+    <main class="main-content">
+        <div class="content-scroll-area">
+            
+            <!-- Detail Header -->
+            <div class="detail-header">
+                <div class="title-section">
+                    <h2>
+                        <span class="api-purple-tag">API</span>
+                        接口服务任务1 
+                        <span class="status-tag">API已上线</span>
+                    </h2>
+                    <div class="desc-text">
+                        描述：禁止频繁调用，每天调用上限50次，超过上限会受到频率拦截文案超长占位文案超长占位文案超长...
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn">测试调用</button>
+                    <button class="btn"><i class="fa fa-arrow-down"></i> 下线</button>
+                    <button class="btn primary"><i class="fa fa-pen-to-square"></i> 编辑</button>
+                </div>
+            </div>
+
+            <!-- Section: Service Content -->
+            <div class="section-title">服务内容（数据接收）</div>
+            <div class="form-grid">
+                <div class="form-label">数据来源</div>
+                <div class="form-value">
+                    接收方式 &nbsp;&nbsp; 通用API请求体 (指定服务入参：inputJDYJSONString)
+                </div>
+                
+                <div class="form-label"></div>
+                <div class="form-value">
+                    来源请求体解析 &nbsp;&nbsp; <a class="link-text">查看详情</a>
+                </div>
+
+                <div class="form-label">数据去向</div>
+                <div class="form-value">
+                    数据连接 &nbsp;&nbsp; MySQL · 数据连接1
+                </div>
+
+                <div class="form-label"></div>
+                <div class="form-value">
+                    库 &nbsp;&nbsp; default
+                </div>
+
+                <div class="form-label"></div>
+                <div class="form-value">
+                    数据操作 &nbsp;&nbsp; 数据插入更新
+                </div>
+
+                <div class="form-label"></div>
+                <div class="form-value">
+                    字段映射 &nbsp;&nbsp; <a class="link-text">查看详情</a>
+                </div>
+
+                <div class="form-label"></div>
+                <div class="form-value">
+                    主键映射 &nbsp;&nbsp; 
+                    <div class="mapping-tag"><span class="symbol symbol-hash">#</span> age</div>
+                    <div class="mapping-tag"><span class="symbol symbol-T">T</span> name</div>
+                    <div class="mapping-tag"><span class="symbol symbol-hash">#</span> price</div>
+                </div>
+
+                <div class="form-label"></div>
+                <div class="form-value">
+                    主键冲突策略 &nbsp;&nbsp; 更新数据
+                </div>
+            </div>
+
+            <!-- Section: Advanced Config -->
+            <div class="section-title"><i class="fa fa-caret-down"></i> 高级配置</div>
+            <div class="form-grid">
+                <div class="form-label">返回结果</div>
+                <div class="form-value">
+                    <div class="check-box-wrapper">
+                        <div class="custom-check"><i class="fa fa-check"></i></div>
+                        等待入库结果
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section: Params -->
+            <div class="section-title"><i class="fa fa-caret-right"></i> 参数和变量</div>
+
+            <!-- Section: API Config -->
+            <div class="section-title">API接口配置</div>
+            <div style="border-top: 1px solid #eee; margin-top: -10px; padding-top: 16px;"></div>
+
+            <div class="form-grid">
+                <div class="form-label">基础属性</div>
+                <div class="form-value">
+                    <div style="display: grid; grid-template-columns: 100px 1fr; width: 100%; row-gap: 12px;">
+                        <div class="form-label">请求方式</div><div>GET</div>
+                        <div class="form-label">路径</div><div style="color: orange;">应用路径 <span style="color: var(--text-main);">/333</span></div>
+                        <div class="form-label">超时时间</div><div>10000 ms</div>
+                        <div class="form-label">绑定应用</div>
+                        <div>
+                            <div class="app-tag"><i class="fa fa-cube"></i> 应用</div>
+                            <div class="app-tag"><i class="fa fa-cube"></i> 应用</div>
+                            <div class="app-tag"><i class="fa fa-cube"></i> 应用</div>
+                            <div class="app-tag"><i class="fa fa-cube"></i> 应用</div>
+                            <div class="app-tag"><i class="fa fa-cube"></i> 应用</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-label">请求接口</div>
+                <div class="form-value tab-btn">Query</div>
+                
+                <div class="form-label"></div>
+                <div class="form-value" style="width: 100%;">
+                    <div style="display: grid; grid-template-columns: 100px 1fr; width: 100%; row-gap: 12px; margin-bottom: 12px;">
+                        <div class="form-label">请求Body格式</div><div>application/json</div>
+                        <div class="form-label">Body整体绑定</div><div>已开启</div>
+                        <div class="form-label">绑定服务入参</div><div>inputJSONString <span style="color:red">*</span> <span style="color: #999">&lt;文本&gt; //通用API请求体</span></div>
+                    </div>
+
+                    <!-- Request Code Box -->
+                    <div class="code-editor-container" style="width: 100%;">
+                        <div class="editor-header">调试值</div>
+                        <div class="editor-body">
+                            {<br>
+                            &nbsp;&nbsp;"order_id": <span class="json-string">"123456789"</span>,<br>
+                            &nbsp;&nbsp;"customer_info": {<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;"name": <span class="json-string">"张伟"</span>,<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;"phone_number": <span class="json-string">"13800001234"</span><br>
+                            &nbsp;&nbsp;}<br>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-label">接口响应</div>
+                <div class="form-value" style="width: 100%;">
+                    <div style="display: flex; gap: 30px; margin-bottom: 12px;">
+                        <div style="display:flex; gap:10px;"><span class="form-label">HTTP状态码</span>
+                            <div class="check-box-wrapper">
+                                <div class="custom-check"><i class="fa fa-check"></i></div>
+                                反映异常信息
+                            </div>
+                        </div>
+                    </div>
+                     <div style="display: flex; gap: 42px; margin-bottom: 12px;">
+                        <span class="form-label">响应格式</span> <span>application/json</span>
+                     </div>
+
+                    <!-- Response Code Box -->
+                    <div class="code-editor-container" style="width: 100%;">
+                        <div class="editor-body">
+                            {<br>
+                            &nbsp;&nbsp;"errCode" : <span class="hl-green-bg">code</span> <span class="hl-text">&lt;文本&gt; //流程运行结果-代码</span><br>
+                            &nbsp;&nbsp;"message" : <span class="hl-green-bg">message</span> <span class="hl-text">&lt;文本&gt; //流程运行结果-信息输出</span><br>
+                            &nbsp;&nbsp;"data" : <span class="hl-green-bg">数据查询.output</span> <span class="hl-text">&lt;数组&gt;</span><br>
+                             &nbsp;&nbsp;"totalNum" : <span class="hl-green-bg">totalNum</span> <span class="hl-text">&lt;数值&gt; //分页变量-SQL查询总数据量，当请求参数returnTotalNum的</span><br>
+                            &nbsp;&nbsp;"pageSize" : <span class="hl-green-bg">pageSize</span> <span class="hl-text">&lt;数值&gt; //分页变量-单页大小</span><br>
+                            }
+                        </div>
+                    </div>
+
+                </div>
+
+            </div> 
+
+            <div style="height: 50px;"></div> <!-- Bottom Spacer -->
+        </div>
+    </main>
+
+    <script>
+        // Simple logic for folder toggling and selection
+        document.querySelectorAll('.tree-node').forEach(node => {
+            node.addEventListener('click', function() {
+                if(this.classList.contains('active')) return;
+                
+                // Visual selection logic only (remove active from others)
+                // document.querySelectorAll('.tree-node').forEach(n => n.classList.remove('active'));
+                // this.classList.add('active');
+
+                // Toggle Arrow if it exists
+                const arrow = this.querySelector('.arrow');
+                if (arrow) {
+                    arrow.classList.toggle('down');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
