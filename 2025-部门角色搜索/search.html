@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>部门成员管理 - A/B/C测试原型</title>
+    <style>
+        /* 基础样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            min-width: 1280px;
+            background-color: #f5f5f5;
+        }
+        
+        /* 顶部导航栏 */
+        .header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+            background-color: #ffffff;
+            border-bottom: 1px solid #e0e0e0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            z-index: 10;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333333;
+            margin-right: 24px;
+        }
+        
+        .version-label {
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: 500;
+            margin-right: 24px;
+        }
+        
+        .version-a {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .version-b {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .version-c {
+            background-color: #fff3e0;
+            color: #e65100;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        
+        .btn:active {
+            transform: translateY(1px);
+        }
+        
+        .btn-primary {
+            background-color: #1E88E5;
+            color: white;
+        }
+        
+        .btn-outline {
+            background-color: transparent;
+            color: #1E88E5;
+            border: 1px solid #1E88E5;
+            margin-left: 8px;
+        }
+        
+        /* 版本选择下拉框 */
+        .version-select {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+            font-size: 14px;
+            font-weight: 500;
+            background-color: white;
+            cursor: pointer;
+            margin-right: 24px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 36px;
+        }
+        
+        /* 主要内容区域 */
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        /* 部门树区域 */
+        .department-tree-container {
+            width: 30%;
+            min-width: 280px;
+            max-width: 400px;
+            background-color: white;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* 防止整体滚动 */
+        }
+        
+        /* 标题固定 */
+        .tree-header {
+            flex-shrink: 0; /* 不收缩 */
+            position: sticky;
+            top: 0;
+            z-index: 100; /* 确保在内容之上 */
+            background-color: white; /* 确保背景不透明 */
+            padding: 16px;
+            border-bottom: 1px solid #e0e0e0;
+            font-weight: 500;
+            color: #333333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        /* 搜索框固定 */
+        .search-container {
+            flex-shrink: 0; /* 不收缩 */
+            position: sticky;
+            top: 57px; /* 标题高度（约57px：16px padding-top + 内容高度 + 16px padding-bottom + 1px border） */
+            z-index: 99; /* 略低于标题，但高于内容 */
+            background-color: white; /* 确保背景不透明 */
+            padding: 16px;
+            border-bottom: 1px solid #e0e0e0;
+            /* sticky定位本身可以作为相对定位基准，用于浮层 */
+        }
+        
+        /* 横向滚动条实现：为部门树容器添加横向滚动 */
+        .department-tree-wrapper {
+            flex: 1; /* 占据剩余空间 */
+            overflow-y: auto; /* 纵向滚动 */
+            overflow-x: auto; /* 横向溢出时显示滚动条 */
+            padding: 16px;
+            white-space: nowrap; /* 防止容器内元素换行 */
+        }
+        
+        /* 搜索浮层容器 */
+        .search-results-overlay {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: #FFFFFF;
+            border: 1px solid #E0E0E0;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none; /* 默认隐藏 */
+        }
+        
+        .search-results-overlay.show {
+            display: block; /* 显示浮层 */
+        }
+        
+        /* 搜索框容器需要相对定位 */
+        
+        .search-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 8px 12px 8px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.2s ease;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #1E88E5; /* 获得焦点时边框变色为主色 */
+        }
+        
+        .clear-btn {
+            position: absolute;
+            right: 12px;
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 16px;
+            display: none; /* 默认隐藏清空按钮 */
+        }
+        
+        .clear-btn.visible {
+            display: block; /* 有内容时显示清空按钮 */
+        }
+        
+        /* 无匹配结果提示 */
+        .no-results {
+            text-align: center;
+            padding: 48px;
+            color: #999999;
+            font-size: 14px;
+        }
+        
+        /* tree-header样式已在上面定义，这里只保留其他样式 */
+        
+        .tree-help {
+            font-size: 12px;
+            color: #666;
+            font-weight: normal;
+        }
+        
+        .department-tree {
+            padding: 16px;
+        }
+        
+        .tree-node {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 4px;
+            transition: background-color 0.2s ease;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .tree-node:hover {
+            background-color: #f0f7ff;
+        }
+        
+        .tree-node.selected {
+            background-color: #1E88E5;
+            color: white;
+        }
+        
+        .tree-node.highlighted {
+            background-color: #1E88E5;
+            color: white;
+        }
+        
+        .tree-node .toggle-icon {
+            margin-right: 8px;
+            width: 16px;
+            text-align: center;
+        }
+        
+        .tree-node .node-name {
+            flex: 1;
+        }
+        
+        .tree-node .member-count {
+            font-size: 12px;
+            color: #666;
+            background-color: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 8px;
+        }
+        
+        .tree-node.selected .member-count,
+        .tree-node.highlighted .member-count {
+            background-color: rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+        
+        /* 搜索结果样式 */
+        /* A版：精简路径样式 */
+        .version-a .path-separator {
+            color: #999;
+            margin: 0 4px;
+        }
+        
+        .version-a .parent-path {
+            color: #666666;
+        }
+        
+        /* B版：完整路径样式 */
+        .version-b .path-separator {
+            color: #999;
+            margin: 0 4px;
+        }
+        
+        .version-b .parent-path {
+            color: #999999;
+        }
+        
+        .version-b .non-matching-node {
+            color: #CCCCCC;
+        }
+        
+        .version-b .non-matching-node .member-count {
+            background-color: #f8f8f8;
+            color: #CCCCCC;
+        }
+        
+        /* 搜索结果List样式 - 卡片列表 */
+        .search-results-list {
+            list-style: none !important;
+            padding: 8px !important;
+            margin: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important; /* 卡片之间的间距 */
+        }
+        
+        /* 搜索结果卡片样式 */
+        .search-results-list .search-result-item,
+        .search-results-overlay .search-result-item {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            padding: 12px 16px !important; /* 卡片内边距 */
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            /* 默认状态：无底色、无描边、无阴影 */
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            border-radius: 8px !important; /* 卡片圆角 */
+            color: #333333 !important;
+            margin: 0 !important;
+        }
+        
+        /* hover状态 - 卡片效果 */
+        .search-results-list .search-result-item:hover:not(.selected),
+        .search-results-overlay .search-result-item:hover:not(.selected) {
+            background-color: #F5F7FA !important; /* 浅灰背景 */
+            border: 1px solid #E0E6ED !important; /* 浅灰边框 */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important; /* 轻微阴影 */
+            transform: translateY(-1px) !important; /* 轻微上移效果 */
+        }
+        
+        /* 选中状态 - 卡片效果 */
+        .search-results-list .search-result-item.selected,
+        .search-results-overlay .search-result-item.selected {
+            background-color: #1E88E5 !important; /* 主色背景 */
+            border: 1px solid #1E88E5 !important; /* 主色边框 */
+            box-shadow: 0 2px 8px rgba(30, 136, 229, 0.3) !important; /* 主色阴影 */
+            color: #FFFFFF !important; /* 白色文字 */
+            transform: translateY(-1px) !important;
+        }
+        
+        /* 卡片内容区域 */
+        .search-results-list .search-result-item .node-name,
+        .search-results-overlay .search-result-item .node-name {
+            flex: 1 !important;
+            display: flex !important;
+            align-items: center !important;
+            overflow: hidden;
+        }
+        
+        .search-results-list .search-result-item .parent-path,
+        .search-results-overlay .search-result-item .parent-path {
+            color: #666666 !important; /* 默认父级路径颜色 */
+        }
+        
+        .search-results-list .search-result-item.selected .parent-path,
+        .search-results-overlay .search-result-item.selected .parent-path {
+            color: rgba(255, 255, 255, 0.9) !important; /* 选中时白色 */
+        }
+        
+        .search-results-list .search-result-item .path-separator,
+        .search-results-overlay .search-result-item .path-separator {
+            color: #999999 !important;
+            margin: 0 6px !important;
+        }
+        
+        .search-results-list .search-result-item.selected .path-separator,
+        .search-results-overlay .search-result-item.selected .path-separator {
+            color: rgba(255, 255, 255, 0.8) !important;
+        }
+        
+        /* 成员数量标签 */
+        .search-results-list .search-result-item .member-count,
+        .search-results-overlay .search-result-item .member-count {
+            font-size: 12px !important;
+            color: #666666 !important;
+            background-color: #F0F0F0 !important;
+            padding: 4px 8px !important;
+            border-radius: 12px !important;
+            margin-left: 12px !important;
+            flex-shrink: 0 !important; /* 防止压缩 */
+        }
+        
+        .search-results-list .search-result-item:hover:not(.selected) .member-count,
+        .search-results-overlay .search-result-item:hover:not(.selected) .member-count {
+            background-color: #E8ECF0 !important;
+        }
+        
+        .search-results-list .search-result-item.selected .member-count,
+        .search-results-overlay .search-result-item.selected .member-count {
+            background-color: rgba(255, 255, 255, 0.25) !important;
+            color: white !important;
+        }
+        
+        /* 搜索结果关键词高亮 - 橙色 */
+        .search-results-list .search-result-item .highlight,
+        .search-results-overlay .search-result-item .highlight {
+            color: #FF7D00 !important; /* 橙色高亮 */
+            font-weight: 500 !important; /* 稍微加粗 */
+        }
+        
+        /* 选中状态下的关键词高亮 - 白色 */
+        .search-results-list .search-result-item.selected .highlight,
+        .search-results-overlay .search-result-item.selected .highlight {
+            color: white !important;
+            font-weight: 600 !important; /* 选中时更粗 */
+        }
+        
+        /* 成员列表区域 */
+        .member-list-container {
+            width: 70%;
+            background-color: white;
+            overflow-y: auto;
+        }
+        
+        .list-header {
+            padding: 16px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .list-title {
+            font-weight: 500;
+            color: #333333;
+            font-size: 16px;
+        }
+        
+        .list-actions {
+            display: flex;
+        }
+        
+        .member-list {
+            padding: 16px;
+        }
+        
+        .list-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .list-table th,
+        .list-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .list-table th {
+            font-weight: 500;
+            color: #666666;
+            background-color: #f9f9f9;
+        }
+        
+        .list-table tbody tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .list-empty {
+            text-align: center;
+            padding: 48px;
+            color: #999999;
+            font-size: 14px;
+        }
+        
+        /* 动画效果 */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.2s ease-in-out;
+        }
+        
+        /* 底部重置按钮 */
+        .footer {
+            padding: 16px;
+            background-color: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <div class="header">
+        <h1>部门成员管理系统</h1>
+        <div class="version-label version-c" id="versionLabel">
+            搜索方案：浮层结果 + 反向定位展开
+        </div>
+    </div>
+    
+    <!-- 主要内容区域 -->
+    <div class="main-content">
+        <!-- 部门树区域 -->
+        <div class="department-tree-container">
+            <div class="tree-header">
+                部门结构
+                <span class="tree-help" id="treeHelp">点击节点选中部门</span>
+            </div>
+            
+            <!-- 搜索框：添加在部门树顶部 -->
+            <div class="search-container">
+                <div class="search-box">
+                    <input type="text" class="search-input" id="searchInput" placeholder="输入部门名称搜索">
+                    <button class="clear-btn" id="clearBtn">×</button>
+                </div>
+                <!-- 搜索结果浮层 -->
+                <div class="search-results-overlay" id="searchResultsOverlay">
+                    <ul class="search-results-list" id="searchResultsList">
+                        <!-- 搜索结果将通过JavaScript动态生成 -->
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- 部门树容器：添加横向滚动 -->
+            <div class="department-tree-wrapper">
+                <!-- C版分栏结构将通过JavaScript动态生成 -->
+                <div class="department-tree" id="departmentTree">
+                    <!-- 部门树将通过JavaScript动态生成 -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- 成员列表区域 -->
+        <div class="member-list-container">
+            <div class="list-header">
+                <div class="list-title" id="listTitle">全公司成员</div>
+                <div class="list-actions">
+                    <button class="btn btn-outline" id="refreshBtn">
+                        刷新成员列表
+                    </button>
+                </div>
+            </div>
+            <div class="member-list" id="memberList">
+                <!-- 成员列表将通过JavaScript动态生成 -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- 底部重置按钮 -->
+    <div class="footer">
+        <button class="btn btn-outline" id="resetBtn">
+            重置流程
+        </button>
+    </div>
+
+    <script>
+        // 生成10层部门树数据结构
+        const departmentData = generateDepartmentTree();
+        
+        // 当前选中的部门ID
+        let selectedDepartmentId = 'company';
+        
+        // 搜索关键词
+        let searchKeyword = '';
+        
+        // 保存的搜索结果（用于再次激活搜索框时恢复显示）
+        let savedSearchResults = [];
+        
+        // 高亮的节点ID（用于反向定位）
+        let highlightedNodeId = null;
+        
+        // DOM元素
+        const departmentTreeEl = document.getElementById('departmentTree');
+        const memberListEl = document.getElementById('memberList');
+        const listTitleEl = document.getElementById('listTitle');
+        const versionLabel = document.getElementById('versionLabel');
+        const treeHelp = document.getElementById('treeHelp');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const searchInput = document.getElementById('searchInput');
+        const clearBtn = document.getElementById('clearBtn');
+        const searchResultsOverlay = document.getElementById('searchResultsOverlay');
+        const searchResultsList = document.getElementById('searchResultsList');
+        const searchContainer = document.querySelector('.search-container');
+        const departmentTreeContainer = document.querySelector('.department-tree-container');
+        const departmentTreeWrapper = document.querySelector('.department-tree-wrapper');
+        
+        // 初始化页面
+        function initPage() {
+            renderDepartmentTree();
+            renderMemberList(selectedDepartmentId);
+            setupEventListeners();
+        }
+        
+        // 生成部门树数据
+        function generateDepartmentTree() {
+            // 姓氏列表，用于生成成员姓名
+            const surnames = ['张', '王', '李', '赵', '刘', '陈', '杨', '黄', '周', '吴', '徐', '孙', '胡', '朱', '高', '林', '何', '郭', '马', '罗'];
+            
+            // 名字列表
+            const firstNames = ['伟', '芳', '娜', '敏', '静', '强', '磊', '军', '洋', '勇', '艳', '涛', '明', '超', '杰', '秀', '娟', '辉', '刚', '婷'];
+            
+            // 角色列表
+            const roles = ['部门经理', '主管', '普通员工', '实习生'];
+            
+            // 生成随机姓名
+            function generateName() {
+                const surname = surnames[Math.floor(Math.random() * surnames.length)];
+                const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+                return surname + firstName;
+            }
+            
+            // 生成随机邮箱
+            function generateEmail(name) {
+                const pinyinMap = {
+                    '张': 'zhang', '王': 'wang', '李': 'li', '赵': 'zhao', '刘': 'liu',
+                    '陈': 'chen', '杨': 'yang', '黄': 'huang', '周': 'zhou', '吴': 'wu',
+                    '徐': 'xu', '孙': 'sun', '胡': 'hu', '朱': 'zhu', '高': 'gao',
+                    '林': 'lin', '何': 'he', '郭': 'guo', '马': 'ma', '罗': 'luo',
+                    '伟': 'wei', '芳': 'fang', '娜': 'na', '敏': 'min', '静': 'jing',
+                    '强': 'qiang', '磊': 'lei', '军': 'jun', '洋': 'yang', '勇': 'yong',
+                    '艳': 'yan', '涛': 'tao', '明': 'ming', '超': 'chao', '杰': 'jie',
+                    '秀': 'xiu', '娟': 'juan', '辉': 'hui', '刚': 'gang', '婷': 'ting'
+                };
+                
+                let pinyin = '';
+                for (let char of name) {
+                    pinyin += pinyinMap[char] || char.toLowerCase();
+                }
+                
+                return pinyin + '@company.com';
+            }
+            
+            // 生成部门成员
+            function generateMembers(departmentId, count = 3) {
+                const members = [];
+                for (let i = 0; i < count; i++) {
+                    const name = generateName();
+                    members.push({
+                        id: `${departmentId}-member-${i}`,
+                        name: name,
+                        email: generateEmail(name),
+                        role: roles[Math.floor(Math.random() * roles.length)]
+                    });
+                }
+                return members;
+            }
+            
+            // 递归生成部门树
+            function generateTree(parentId, parentName, level, maxLevel) {
+                const department = {
+                    id: parentId,
+                    name: parentName,
+                    level: level,
+                    children: [],
+                    members: generateMembers(parentId),
+                    expanded: false // 默认折叠状态
+                };
+                
+                // 如果达到最大层级，不再生成子部门
+                if (level >= maxLevel) {
+                    return department;
+                }
+                
+                // 根据层级和父部门生成子部门
+                let childDepartments = [];
+                
+                if (parentId === 'company') {
+                    // 第一层：公司级部门
+                    childDepartments = [
+                        { id: 'admin-center', name: '行政中心' },
+                        { id: 'tech-center', name: '技术中心' },
+                        { id: 'business-center', name: '业务中心' }
+                    ];
+                    department.expanded = true; // 根节点默认展开
+                } else if (parentId === 'admin-center') {
+                    // 第二层：行政中心下属部门
+                    childDepartments = [
+                        { id: 'hr-department', name: '人事部门' },
+                        { id: 'finance-department', name: '财务部门' },
+                        { id: 'general-department', name: '总务部门' }
+                    ];
+                } else if (parentId === 'hr-department') {
+                    // 第三层：人事部门下属小组
+                    childDepartments = [
+                        { id: 'recruitment-team', name: '招聘组' },
+                        { id: 'employee-relations-team', name: '员工关系组' },
+                        { id: 'training-team', name: '培训组' }
+                    ];
+                } else if (parentId === 'recruitment-team') {
+                    // 第四层：招聘组下属小组
+                    childDepartments = [
+                        { id: 'tech-recruitment', name: '技术招聘组' },
+                        { id: 'admin-recruitment', name: '行政招聘组' },
+                        { id: 'business-recruitment', name: '业务招聘组' }
+                    ];
+                } else if (parentId === 'tech-recruitment') {
+                    // 第五层：技术招聘组下属小组
+                    childDepartments = [
+                        { id: 'frontend-recruitment', name: '前端招聘组' },
+                        { id: 'backend-recruitment', name: '后端招聘组' },
+                        { id: 'algorithm-recruitment', name: '算法招聘组' }
+                    ];
+                } else if (parentId === 'frontend-recruitment') {
+                    // 第六层：前端招聘组下属小组
+                    childDepartments = [
+                        { id: 'junior-frontend-recruitment', name: '初级前端招聘组' },
+                        { id: 'senior-frontend-recruitment', name: '高级前端招聘组' },
+                        { id: 'expert-frontend-recruitment', name: '专家前端招聘组' }
+                    ];
+                } else if (parentId === 'junior-frontend-recruitment') {
+                    // 第七层：初级前端招聘组下属小组
+                    childDepartments = [
+                        { id: 'graduate-recruitment', name: '应届生招聘组' },
+                        { id: 'intern-recruitment', name: '实习生招聘组' },
+                        { id: 'junior-transfer-recruitment', name: '初级转岗招聘组' }
+                    ];
+                } else if (parentId === 'graduate-recruitment') {
+                    // 第八层：应届生招聘组下属小组
+                    childDepartments = [
+                        { id: 'top-school-recruitment', name: '名校招聘组' },
+                        { id: 'ordinary-school-recruitment', name: '普通院校招聘组' },
+                        { id: 'overseas-recruitment', name: '海外招聘组' }
+                    ];
+                } else if (parentId === 'top-school-recruitment') {
+                    // 第九层：名校招聘组下属小组
+                    childDepartments = [
+                        { id: 'beijing-school-recruitment', name: '北京高校招聘组' },
+                        { id: 'shanghai-school-recruitment', name: '上海高校招聘组' },
+                        { id: 'guangzhou-school-recruitment', name: '广州高校招聘组' }
+                    ];
+                } else if (parentId === 'beijing-school-recruitment') {
+                    // 第十层：北京高校招聘组下属小组（最后一层）
+                    childDepartments = [
+                        { id: 'tsinghua-recruitment', name: '清华招聘组' },
+                        { id: 'peking-recruitment', name: '北大招聘组' },
+                        { id: 'other-beijing-recruitment', name: '其他北京高校招聘组' }
+                    ];
+                } else if (parentId === 'tech-center') {
+                    // 第二层：技术中心下属部门
+                    childDepartments = [
+                        { id: 'rd-department', name: '研发部门' },
+                        { id: 'qa-department', name: '质量保证部门' },
+                        { id: 'devops-department', name: '运维部门' }
+                    ];
+                } else if (parentId === 'rd-department') {
+                    // 第三层：研发部门下属小组
+                    childDepartments = [
+                        { id: 'frontend-team', name: '前端组' },
+                        { id: 'backend-team', name: '后端组' },
+                        { id: 'algorithm-team', name: '算法组' }
+                    ];
+                } else if (parentId === 'frontend-team') {
+                    // 第四层：前端组下属小组
+                    childDepartments = [
+                        { id: 'web-frontend', name: 'Web前端组' },
+                        { id: 'mobile-frontend', name: '移动前端组' },
+                        { id: 'desktop-frontend', name: '桌面前端组' }
+                    ];
+                } else if (parentId === 'business-center') {
+                    // 第二层：业务中心下属部门
+                    childDepartments = [
+                        { id: 'sales-department', name: '销售部门' },
+                        { id: 'marketing-department', name: '市场部门' },
+                        { id: 'customer-department', name: '客户部门' }
+                    ];
+                } else if (parentId === 'sales-department') {
+                    // 第三层：销售部门下属小组
+                    childDepartments = [
+                        { id: 'east-sales', name: '华东区销售' },
+                        { id: 'north-sales', name: '华北区销售' },
+                        { id: 'south-sales', name: '华南区销售' }
+                    ];
+                } else if (parentId === 'east-sales') {
+                    // 第四层：华东区销售下属小组
+                    childDepartments = [
+                        { id: 'shanghai-sales', name: '上海销售分部' },
+                        { id: 'jiangsu-sales', name: '江苏销售分部' },
+                        { id: 'zhejiang-sales', name: '浙江销售分部' }
+                    ];
+                } else if (parentId === 'shanghai-sales') {
+                    // 第五层：上海销售分部下属小组
+                    childDepartments = [
+                        { id: 'shanghai-pudong-sales', name: '上海浦东销售组' },
+                        { id: 'shanghai-zhangjiang-sales', name: '上海张江销售组' },
+                        { id: 'shanghai-xuhui-sales', name: '上海徐汇销售组' }
+                    ];
+                }
+                
+                // 为每个子部门生成子树
+                childDepartments.forEach(child => {
+                    department.children.push(generateTree(child.id, child.name, level + 1, maxLevel));
+                });
+                
+                return department;
+            }
+            
+            // 生成10层部门树
+            return generateTree('company', '公司', 1, 10);
+        }
+        
+        // 渲染部门树
+        function renderDepartmentTree() {
+            // 清除现有内容
+            departmentTreeEl.innerHTML = '';
+            
+            // 渲染完整部门树
+            renderTreeNode(departmentData);
+            
+            // 如果有高亮的节点，执行反向定位
+            if (highlightedNodeId) {
+                highlightAndScrollToNode(highlightedNodeId, departmentTreeEl);
+            }
+        }
+        
+        // 渲染搜索结果到浮层
+        function renderSearchResults() {
+            // 清空搜索结果列表
+            searchResultsList.innerHTML = '';
+            
+            if (searchKeyword.trim() === '') {
+                // 如果没有搜索关键词，隐藏浮层
+                searchResultsOverlay.classList.remove('show');
+                savedSearchResults = [];
+                return;
+            }
+            
+            // 获取匹配的部门
+            const matchedDepartments = searchDepartments(departmentData, searchKeyword);
+            
+            // 保存搜索结果
+            savedSearchResults = matchedDepartments;
+            
+            if (matchedDepartments.length === 0) {
+                // 没有匹配的部门，显示提示
+                const noResultsEl = document.createElement('div');
+                noResultsEl.className = 'no-results';
+                noResultsEl.textContent = '无匹配部门';
+                noResultsEl.style.padding = '16px';
+                noResultsEl.style.textAlign = 'center';
+                noResultsEl.style.color = '#999999';
+                searchResultsList.appendChild(noResultsEl);
+            } else {
+                // 渲染搜索结果列表（卡片形式）
+                matchedDepartments.forEach(dept => {
+                    const resultItem = createSearchResultItem(dept);
+                    searchResultsList.appendChild(resultItem);
+                });
+            }
+            
+            // 显示浮层
+            searchResultsOverlay.classList.add('show');
+        }
+        
+        // 创建搜索结果项（卡片样式）
+        function createSearchResultItem(dept) {
+            const resultItem = document.createElement('li');
+            resultItem.className = 'search-result-item';
+            resultItem.dataset.id = dept.id;
+            
+            // 如果是选中的节点，添加selected类
+            if (dept.id === selectedDepartmentId) {
+                resultItem.classList.add('selected');
+            }
+            
+            // 创建节点名称容器
+            const nodeNameContainer = document.createElement('span');
+            nodeNameContainer.className = 'node-name';
+            
+            // 查找直接父级
+            const parent = findParentNode(departmentData, dept.id);
+            
+            if (parent && parent.id !== 'company') { // 不是根节点的子节点
+                // 创建父级路径
+                const parentPath = document.createElement('span');
+                parentPath.className = 'parent-path';
+                parentPath.textContent = parent.name;
+                
+                // 创建分隔符
+                const separator = document.createElement('span');
+                separator.className = 'path-separator';
+                separator.textContent = '>';
+                
+                // 添加到容器
+                nodeNameContainer.appendChild(parentPath);
+                nodeNameContainer.appendChild(separator);
+            }
+            
+            // 添加节点名称（可能需要高亮）
+            addNodeNameWithHighlight(dept.name, nodeNameContainer, resultItem);
+            
+            resultItem.appendChild(nodeNameContainer);
+            
+            // 创建成员数量
+            const memberCount = document.createElement('span');
+            memberCount.className = 'member-count';
+            
+            // 计算部门总成员数（包括子部门）
+            let totalMembers = dept.members.length;
+            if (dept.children && dept.children.length > 0) {
+                dept.children.forEach(child => {
+                    totalMembers += countMembers(child);
+                });
+            }
+            
+            memberCount.textContent = totalMembers;
+            resultItem.appendChild(memberCount);
+            
+            // 添加点击事件
+            resultItem.addEventListener('click', () => {
+                // 移除其他所有选中项
+                const allItems = document.querySelectorAll('.search-result-item');
+                allItems.forEach(item => {
+                    item.classList.remove('selected');
+                });
+                
+                // 选中当前项
+                resultItem.classList.add('selected');
+                
+                // 选中该部门
+                selectDepartment(dept.id);
+                
+                // 更新高亮节点
+                highlightedNodeId = dept.id;
+                
+                // 关闭浮层
+                searchResultsOverlay.classList.remove('show');
+                
+                // 执行反向定位
+                highlightAndScrollToNode(dept.id, departmentTreeEl);
+            });
+            
+            return resultItem;
+        }
+        
+        // 高亮并滚动到指定节点
+        function highlightAndScrollToNode(nodeId, container) {
+            // 先展开所有父节点（必须在查找节点之前）
+            expandAllParents(nodeId, () => {
+                // DOM更新完成后的回调
+                // 使用requestAnimationFrame确保DOM已完全渲染
+                requestAnimationFrame(() => {
+                    // 移除之前的高亮
+                    const previousHighlighted = container.querySelector('.tree-node.highlighted');
+                    if (previousHighlighted) {
+                        previousHighlighted.classList.remove('highlighted');
+                    }
+                    
+                    // 查找节点（此时节点应该已经展开并渲染）
+                    const node = container.querySelector(`.tree-node[data-id="${nodeId}"]`);
+                    if (!node) {
+                        // 如果还是找不到，再等待一下（可能是渲染延迟）
+                        setTimeout(() => {
+                            const retryNode = container.querySelector(`.tree-node[data-id="${nodeId}"]`);
+                            if (retryNode) {
+                                retryNode.classList.add('highlighted');
+                                retryNode.scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'center'
+                                });
+                            }
+                        }, 150);
+                        return;
+                    }
+                    
+                    // 高亮节点
+                    node.classList.add('highlighted');
+                    
+                    // 滚动到节点
+                    setTimeout(() => {
+                        node.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center'
+                        });
+                    }, 50);
+                });
+            });
+        }
+        
+        // 展开所有父节点（优化：全量展开）
+        function expandAllParents(nodeId, callback) {
+            function expandParent(currentNodeId) {
+                const parent = findParentNode(departmentData, currentNodeId);
+                if (parent) {
+                    // 强制展开所有父节点，包括根节点
+                    parent.expanded = true;
+                    expandParent(parent.id);
+                }
+            }
+            
+            // 先展开所有父节点
+            expandParent(nodeId);
+            
+            // 重新渲染完整部门树
+            departmentTreeEl.innerHTML = '';
+            renderTreeNode(departmentData, departmentTreeEl);
+            
+            // DOM更新完成后执行回调
+            if (callback) {
+                // 使用双重requestAnimationFrame确保DOM完全渲染
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        callback();
+                    });
+                });
+            }
+        }
+        
+        // A版搜索结果呈现：精简路径+仅显匹配节点及直接父级
+        function renderSearchResultsVersionA(matchedDepartments) {
+            // 创建一个映射，用于存储每个部门的直接父级
+            const parentMap = new Map();
+            
+            // 递归构建父级映射
+            function buildParentMap(node, parent = null) {
+                if (node) {
+                    parentMap.set(node.id, parent);
+                    if (node.children && node.children.length > 0) {
+                        node.children.forEach(child => {
+                            buildParentMap(child, node);
+                        });
+                    }
+                }
+            }
+            
+            buildParentMap(departmentData);
+            
+            // 收集所有需要显示的节点（匹配节点及其直接父级）
+            const nodesToShow = new Set();
+            matchedDepartments.forEach(dept => {
+                nodesToShow.add(dept);
+                
+                // 添加直接父级
+                const parent = parentMap.get(dept.id);
+                if (parent && parent.id !== 'company') { // 根节点会单独处理
+                    nodesToShow.add(parent);
+                }
+            });
+            
+            // 创建一个简化的部门树结构，只包含需要显示的节点
+            const simplifiedTree = { ...departmentData, children: [] };
+            
+            // 为每个需要显示的节点添加到简化树中
+            matchedDepartments.forEach(dept => {
+                const parent = parentMap.get(dept.id);
+                
+                if (!parent || parent.id === 'company') {
+                    // 直接添加到根节点下
+                    simplifiedTree.children.push(dept);
+                } else {
+                    // 检查父节点是否已经在简化树中
+                    let parentInTree = simplifiedTree.children.find(child => child.id === parent.id);
+                    
+                    if (!parentInTree) {
+                        // 创建父节点的简化版本
+                        parentInTree = { ...parent, children: [] };
+                        simplifiedTree.children.push(parentInTree);
+                    }
+                    
+                    // 添加当前节点到父节点下
+                    parentInTree.children.push(dept);
+                }
+            });
+            
+            // 渲染简化树
+            renderTreeNode(simplifiedTree, departmentTreeEl, 0, true);
+        }
+        
+        // B版搜索结果呈现：完整路径折叠+仅展开匹配节点分支
+        function renderSearchResultsVersionB(matchedDepartments) {
+            // 保存原始展开状态
+            const originalExpandedState = new Map();
+            
+            // 递归保存原始展开状态
+            function saveExpandedState(node) {
+                originalExpandedState.set(node.id, node.expanded);
+                
+                // 搜索时默认折叠所有节点
+                node.expanded = false;
+                
+                if (node.children && node.children.length > 0) {
+                    node.children.forEach(child => {
+                        saveExpandedState(child);
+                    });
+                }
+            }
+            
+            saveExpandedState(departmentData);
+            
+            // 展开匹配节点所在的路径
+            function expandPathToNode(node) {
+                if (!node) return;
+                
+                // 递归展开所有父节点
+                const parent = findParentNode(departmentData, node.id);
+                if (parent) {
+                    parent.expanded = true;
+                    expandPathToNode(parent);
+                }
+                
+                // 展开当前节点
+                node.expanded = true;
+            }
+            
+            // 为每个匹配节点展开路径
+            matchedDepartments.forEach(dept => {
+                expandPathToNode(dept);
+            });
+            
+            // 渲染完整部门树（会自动应用新的展开状态）
+            renderTreeNode(departmentData, departmentTreeEl, 0, true);
+            
+            // 恢复原始展开状态（在渲染完成后）
+            setTimeout(() => {
+                function restoreExpandedState(node) {
+                    node.expanded = originalExpandedState.get(node.id);
+                    if (node.children && node.children.length > 0) {
+                        node.children.forEach(child => {
+                            restoreExpandedState(child);
+                        });
+                    }
+                }
+                
+                restoreExpandedState(departmentData);
+            }, 0);
+        }
+        
+        // 查找节点的父节点
+        function findParentNode(root, nodeId) {
+            if (!root || !root.children || root.children.length === 0) {
+                return null;
+            }
+            
+            for (const child of root.children) {
+                if (child.id === nodeId) {
+                    return root;
+                }
+                
+                const parent = findParentNode(child, nodeId);
+                if (parent) {
+                    return parent;
+                }
+            }
+            
+            return null;
+        }
+        
+        // 模糊搜索逻辑：搜索包含关键词的部门
+        function searchDepartments(node, keyword) {
+            const matched = [];
+            
+            // 检查当前节点是否匹配
+            if (node.name.toLowerCase().includes(keyword.toLowerCase())) {
+                matched.push(node);
+            }
+            
+            // 递归检查子节点
+            if (node.children && node.children.length > 0) {
+                node.children.forEach(child => {
+                    matched.push(...searchDepartments(child, keyword));
+                });
+            }
+            
+            return matched;
+        }
+        
+        // 递归渲染部门树节点
+        function renderTreeNode(node, parentEl = departmentTreeEl, depth = 0, isSearchResult = false) {
+            // 创建节点元素
+            const nodeEl = document.createElement('div');
+            nodeEl.className = 'tree-node';
+            nodeEl.dataset.id = node.id;
+            
+            // 如果是选中的节点，添加selected类
+            if (node.id === selectedDepartmentId) {
+                nodeEl.classList.add('selected');
+            }
+            
+            // 如果是高亮的节点，添加highlighted类
+            if (node.id === highlightedNodeId) {
+                nodeEl.classList.add('highlighted');
+            }
+            
+            // 添加缩进样式
+            nodeEl.style.paddingLeft = `${depth * 20 + 12}px`;
+            
+            // 创建展开/收起图标
+            const toggleIcon = document.createElement('span');
+            toggleIcon.className = 'toggle-icon';
+            
+            // 如果有子节点，显示展开/收起图标
+            if (node.children && node.children.length > 0) {
+                // 检查节点是否已展开
+                const isExpanded = node.expanded !== false; // 默认展开
+                toggleIcon.textContent = isExpanded ? '▼' : '▶';
+                nodeEl.appendChild(toggleIcon);
+            } else {
+                // 如果没有子节点，显示空白占位
+                toggleIcon.textContent = '　'; // 全角空格
+                nodeEl.appendChild(toggleIcon);
+            }
+            
+            // 创建节点名称容器
+            const nodeNameContainer = document.createElement('span');
+            nodeNameContainer.className = 'node-name';
+            
+            // 搜索结果中，根据版本显示不同的路径
+            if (searchKeyword.trim() !== '' && isSearchResult) {
+                if (currentVersion === 'A' || currentVersion === 'C') {
+                    // A版和C版：显示直接父级路径
+                    renderNodeNameWithDirectParent(node, nodeNameContainer);
+                } else {
+                    // B版：显示完整路径
+                    renderNodeNameWithFullPath(node, nodeNameContainer);
+                    
+                    // B版：非匹配节点降低视觉权重
+                    if (!node.name.toLowerCase().includes(searchKeyword.toLowerCase())) {
+                        nodeEl.classList.add('non-matching-node');
+                    }
+                }
+            } else {
+                // 非搜索状态，直接显示节点名称
+                nodeNameContainer.textContent = node.name;
+            }
+            
+            nodeEl.appendChild(nodeNameContainer);
+            
+            // 创建成员数量
+            const memberCount = document.createElement('span');
+            memberCount.className = 'member-count';
+            
+            // 计算部门总成员数（包括子部门）
+            let totalMembers = node.members.length;
+            if (node.children && node.children.length > 0) {
+                node.children.forEach(child => {
+                    totalMembers += countMembers(child);
+                });
+            }
+            
+            memberCount.textContent = totalMembers;
+            nodeEl.appendChild(memberCount);
+            
+            // 添加到父元素
+            parentEl.appendChild(nodeEl);
+            
+            // 如果节点已展开且有子节点，递归渲染子节点
+            // 在搜索结果中，默认展开所有子节点
+            const shouldExpand = isSearchResult || (node.expanded !== false);
+            if (node.children && node.children.length > 0 && shouldExpand) {
+                const childrenContainer = document.createElement('div');
+                childrenContainer.className = 'tree-children';
+                childrenContainer.style.marginLeft = '16px';
+                parentEl.appendChild(childrenContainer);
+                
+                node.children.forEach(child => {
+                    renderTreeNode(child, childrenContainer, depth + 1, isSearchResult);
+                });
+            }
+            
+            // 添加事件监听器
+            setupTreeNodeEvents(nodeEl, node);
+        }
+        
+        // A版：渲染节点名称和直接父级路径
+        function renderNodeNameWithDirectParent(node, container) {
+            // 查找直接父级
+            const parent = findParentNode(departmentData, node.id);
+            
+            if (parent && parent.id !== 'company') { // 不是根节点的子节点
+                // 创建父级路径
+                const parentPath = document.createElement('span');
+                parentPath.className = 'parent-path';
+                parentPath.textContent = parent.name;
+                
+                // 创建分隔符
+                const separator = document.createElement('span');
+                separator.className = 'path-separator';
+                separator.textContent = '>';
+                
+                // 添加到容器
+                container.appendChild(parentPath);
+                container.appendChild(separator);
+            }
+            
+            // 添加节点名称（可能需要高亮）
+            addNodeNameWithHighlight(node.name, container);
+        }
+        
+        // B版：渲染节点名称和完整路径
+        function renderNodeNameWithFullPath(node, container) {
+            // 获取完整路径
+            const path = getFullPath(node);
+            
+            if (path.length > 1) { // 路径长度大于1，说明不是根节点
+                // 创建路径容器
+                const pathContainer = document.createElement('span');
+                pathContainer.className = 'parent-path';
+                
+                // 添加路径（除了最后一个节点）
+                for (let i = 0; i < path.length - 1; i++) {
+                    if (i > 0) {
+                        // 添加分隔符
+                        const separator = document.createElement('span');
+                        separator.className = 'path-separator';
+                        separator.textContent = '/';
+                        pathContainer.appendChild(separator);
+                    }
+                    
+                    // 添加路径节点
+                    const pathNode = document.createElement('span');
+                    pathNode.textContent = path[i];
+                    pathContainer.appendChild(pathNode);
+                }
+                
+                // 添加分隔符
+                const separator = document.createElement('span');
+                separator.className = 'path-separator';
+                separator.textContent = '/';
+                container.appendChild(separator);
+                
+                // 添加路径
+                container.appendChild(pathContainer);
+            }
+            
+            // 添加节点名称（可能需要高亮）
+            addNodeNameWithHighlight(node.name, container);
+        }
+        
+        // 获取节点的完整路径
+        function getFullPath(node) {
+            const path = [];
+            
+            // 递归获取路径
+            function buildPath(currentNode) {
+                if (currentNode) {
+                    buildPath(findParentNode(departmentData, currentNode.id));
+                    path.push(currentNode.name);
+                }
+            }
+            
+            buildPath(node);
+            return path;
+        }
+        
+        // 添加带高亮的节点名称
+        function addNodeNameWithHighlight(name, container, parentElement = null) {
+            if (searchKeyword.trim() !== '') {
+                const keyword = searchKeyword.toLowerCase();
+                const index = name.toLowerCase().indexOf(keyword);
+                
+                if (index !== -1) {
+                    // 高亮显示关键词部分
+                    const before = document.createTextNode(name.substring(0, index));
+                    const highlight = document.createElement('span');
+                    highlight.className = 'highlight';
+                    
+                    // 判断是否为搜索结果项
+                    const isSearchResult = parentElement && 
+                        parentElement.classList.contains('search-result-item');
+                    
+                    // 如果父元素是选中状态，高亮色为白色
+                    if (parentElement && parentElement.classList.contains('selected')) {
+                        highlight.style.color = 'white';
+                    } else if (isSearchResult) {
+                        // 搜索结果：橙色高亮
+                        highlight.style.color = '#FF7D00';
+                    } else {
+                        // 其他情况：主色高亮
+                        highlight.style.color = '#1E88E5';
+                    }
+                    
+                    highlight.textContent = name.substring(index, index + keyword.length);
+                    const after = document.createTextNode(name.substring(index + keyword.length));
+                    
+                    container.appendChild(before);
+                    container.appendChild(highlight);
+                    container.appendChild(after);
+                    return;
+                }
+            }
+            
+            // 没有匹配或没有搜索关键词，直接显示名称
+            container.textContent = name;
+        }
+        
+        // 计算部门总成员数（包括子部门）
+        function countMembers(node) {
+            let count = node.members.length;
+            if (node.children && node.children.length > 0) {
+                node.children.forEach(child => {
+                    count += countMembers(child);
+                });
+            }
+            return count;
+        }
+        
+        // 为部门树节点设置事件监听器
+        function setupTreeNodeEvents(nodeEl, node) {
+            // 点击节点选中，再次点击同一父节点展开/收起
+            nodeEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                
+                // 获取当前节点的选中状态
+                const isSelected = nodeEl.classList.contains('selected');
+                
+                // 如果点击的是已选中的父节点，切换展开/收起状态
+                if (isSelected && node.children && node.children.length > 0) {
+                    node.expanded = !node.expanded;
+                    renderDepartmentTree();
+                    return;
+                }
+                
+                // 否则，选中该节点
+                selectDepartment(node.id);
+            });
+        }
+        
+        // 选中部门
+        function selectDepartment(departmentId) {
+            // 更新选中的部门ID
+            selectedDepartmentId = departmentId;
+            
+            // 重新渲染部门树和成员列表
+            renderDepartmentTree();
+            renderMemberList(departmentId);
+            
+            // 滚动到选中的节点
+            scrollToSelectedNode();
+        }
+        
+        // 滚动到选中的节点
+        function scrollToSelectedNode() {
+            const selectedNode = document.querySelector(`.tree-node[data-id="${selectedDepartmentId}"]`) || 
+                                document.querySelector(`.search-result-item[data-id="${selectedDepartmentId}"]`);
+            
+            if (selectedNode) {
+                selectedNode.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest'
+                });
+            }
+        }
+        
+        // 渲染成员列表
+        function renderMemberList(departmentId) {
+            // 查找部门
+            const department = findDepartmentById(departmentData, departmentId);
+            
+            if (!department) {
+                memberListEl.innerHTML = '<div class="list-empty">未找到该部门</div>';
+                return;
+            }
+            
+            // 更新列表标题
+            if (departmentId === 'company') {
+                listTitleEl.textContent = '全公司成员';
+            } else {
+                listTitleEl.textContent = `${department.name} 成员`;
+            }
+            
+            // 获取部门成员（包括子部门）
+            const members = getAllMembers(department);
+            
+            // 渲染成员列表
+            if (members.length === 0) {
+                memberListEl.innerHTML = '<div class="list-empty">该部门暂无成员</div>';
+            } else {
+                let html = `
+                    <table class="list-table fade-in">
+                        <thead>
+                            <tr>
+                                <th>姓名</th>
+                                <th>电子邮箱</th>
+                                <th>角色</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                members.forEach(member => {
+                    html += `
+                        <tr>
+                            <td>${member.name}</td>
+                            <td>${member.email}</td>
+                            <td>${member.role}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                        </tbody>
+                    </table>
+                `;
+                
+                memberListEl.innerHTML = html;
+            }
+        }
+        
+        // 根据ID查找部门
+        function findDepartmentById(node, id) {
+            if (node.id === id) {
+                return node;
+            }
+            
+            if (node.children && node.children.length > 0) {
+                for (let child of node.children) {
+                    const found = findDepartmentById(child, id);
+                    if (found) {
+                        return found;
+                    }
+                }
+            }
+            
+            return null;
+        }
+        
+        // 获取部门所有成员（包括子部门）
+        function getAllMembers(node) {
+            let members = [...node.members];
+            
+            if (node.children && node.children.length > 0) {
+                node.children.forEach(child => {
+                    members = members.concat(getAllMembers(child));
+                });
+            }
+            
+            return members;
+        }
+        
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 搜索框获得焦点时，如果有保存的搜索结果，恢复显示
+            searchInput.addEventListener('focus', () => {
+                if (savedSearchResults.length > 0 && searchKeyword.trim() !== '') {
+                    renderSearchResults();
+                }
+            });
+            
+            // 搜索框输入事件
+            searchInput.addEventListener('input', () => {
+                searchKeyword = searchInput.value.trim();
+                
+                // 显示/隐藏清空按钮
+                if (searchKeyword !== '') {
+                    clearBtn.classList.add('visible');
+                    // 实时渲染搜索结果到浮层
+                    renderSearchResults();
+                } else {
+                    clearBtn.classList.remove('visible');
+                    // 清空搜索关键词时，取消高亮并隐藏浮层
+                    highlightedNodeId = null;
+                    searchResultsOverlay.classList.remove('show');
+                    savedSearchResults = [];
+                }
+            });
+            
+            // 清空搜索按钮
+            clearBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                searchInput.value = '';
+                searchKeyword = '';
+                clearBtn.classList.remove('visible');
+                highlightedNodeId = null;
+                savedSearchResults = [];
+                searchResultsOverlay.classList.remove('show');
+            });
+            
+            // 点击外部区域关闭浮层
+            document.addEventListener('click', (e) => {
+                if (!searchContainer.contains(e.target) && !searchResultsOverlay.contains(e.target)) {
+                    searchResultsOverlay.classList.remove('show');
+                }
+            });
+            
+            // 刷新成员列表按钮
+            refreshBtn.addEventListener('click', () => {
+                // 添加刷新动画
+                refreshBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 刷新中...';
+                
+                // 模拟刷新延迟
+                setTimeout(() => {
+                    renderMemberList(selectedDepartmentId);
+                    refreshBtn.innerHTML = '刷新成员列表';
+                }, 500);
+            });
+            
+            // 重置流程按钮
+            resetBtn.addEventListener('click', () => {
+                // 重置部门树展开状态
+                resetDepartmentTreeExpansion(departmentData);
+                
+                // 重置选中状态
+                selectedDepartmentId = 'company';
+                highlightedNodeId = null;
+                
+                // 清除搜索框和浮层
+                searchInput.value = '';
+                searchKeyword = '';
+                clearBtn.classList.remove('visible');
+                savedSearchResults = [];
+                searchResultsOverlay.classList.remove('show');
+                
+                // 重新渲染部门树
+                renderDepartmentTree();
+                renderMemberList(selectedDepartmentId);
+            });
+        }
+        
+        // 重置部门树展开状态
+        function resetDepartmentTreeExpansion(node) {
+            // 只有根节点默认展开
+            if (node.id === 'company') {
+                node.expanded = true;
+            } else {
+                node.expanded = false;
+            }
+            
+            // 递归重置子节点
+            if (node.children && node.children.length > 0) {
+                node.children.forEach(child => {
+                    resetDepartmentTreeExpansion(child);
+                });
+            }
+        }
+        
+        // 初始化页面
+        initPage();
+    </script>
+</body>
+</html>

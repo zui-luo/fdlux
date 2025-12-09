@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tab Smart Squeeze Component</title>
+    <style>
+        /* 基础样式重置 */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+
+        h3 { margin-bottom: 20px; color: #fff; font-weight: 500; }
+
+        /* --- 组件核心样式 --- */
+        
+        .tab-container {
+            /* 硬性限制总宽度 200px */
+            width: 200px;
+            height: 40px;
+            background: #fff;
+            border: none;
+            border-radius: 0;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .tab-item {
+            /* 1. 基础布局逻辑 */
+            /* 默认 flex: 1，大家均分空间 */
+            flex: 1; 
+            
+            /* 2. 最小宽度保护 */
+            /* 即使被挤压，也要保留至少 25px，防止完全消失 */
+            min-width: 25px; 
+            
+            /* 3. 样式与排版 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+            border-right: 1px solid #e0e0e0;
+            background-color: #fff;
+            position: relative;
+            
+            /* 4. 文本截断逻辑 (Ellipsis) - 默认状态显示省略号 */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 8px;
+            
+            /* 5. 动效核心 */
+            transition: flex 0.3s cubic-bezier(0.25, 0.8, 0.5, 1), 
+                        background-color 0.2s, 
+                        color 0.2s;
+        }
+
+        /* 最后一个不需要右边框 */
+        .tab-item:last-child {
+            border-right: none;
+        }
+
+        /* --- 状态交互逻辑 --- */
+
+        /* 状态 A: Active (点击激活状态) - 完整显示文字，永远不被挤压 */
+        .tab-item.active {
+            flex: 1000; /* 使用非常大的flex值，确保占据绝大部分空间 */
+            background-color: #fff;
+            color: #1890ff; /* 蓝色文字 */
+            font-weight: 500;
+            /* active状态时移除省略号，完整显示 */
+            text-overflow: clip;
+        }
+
+        /* Active 状态的底部蓝色指示条 */
+        .tab-item.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: #1890ff;
+        }
+
+        /* 状态 B: Hover (鼠标悬停状态) - 完整显示文字，永远不被挤压 */
+        .tab-item:hover {
+            flex: 1000; /* 使用非常大的flex值，确保占据绝大部分空间 */
+            background-color: #fff;
+            color: #1890ff; /* 浅蓝色文字 */
+            /* hover状态时移除省略号，完整显示 */
+            text-overflow: clip;
+        }
+
+        /* 只有非active且非hover的tab才被挤压 */
+        /* 默认的 .tab-item 已经是 flex: 1，所以非active且非hover的会自动被挤压 */
+
+    </style>
+</head>
+<body>
+
+    <h3>Tab 交互体验演示 (Width: 200px)</h3>
+
+    <div class="tab-container" id="myTab">
+        <div class="tab-item active" onclick="selectTab(0)">数据概览</div>
+        <div class="tab-item" onclick="selectTab(1)">系统管理配置</div>
+        <div class="tab-item" onclick="selectTab(2)">用户权限中心</div>
+        <div class="tab-item" onclick="selectTab(3)">审计日志</div>
+    </div>
+
+    <p style="margin-top: 30px; color: #999; font-size: 12px;">
+        体验指引：<br>
+        1. 观察默认 Active 的 Tab 文字完整显示（蓝色文字+底部蓝色条）。<br>
+        2. Hover 其他 Tab，Active Tab 保持完整显示，Hover 的 Tab 也完整显示，其他 Tab 被挤压。<br>
+        3. 移开鼠标，Active Tab 继续完整显示。<br>
+        4. 点击任意 Tab 切换状态。
+    </p>
+
+    <script>
+        // 简单的 JS 逻辑用于处理 Click 状态切换
+        function selectTab(index) {
+            const tabs = document.querySelectorAll('.tab-item');
+            
+            // 移除所有 active 类
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // 给当前点击的添加 active 类
+            tabs[index].classList.add('active');
+        }
+    </script>
+</body>
+</html>
