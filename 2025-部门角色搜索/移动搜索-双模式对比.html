@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>组织架构 - 双模式对比</title>
+    <style>
+        :root {
+            --primary-blue: #2A7BFC;
+            --bg-gray: #F5F6F7;
+            --text-main: #1D1D1F;
+            --text-sub: #8E8E93;
+            --border-color: #E5E5E5;
+            --icon-org-bg: #FF9F0A; 
+            --icon-user-blue: #2A7BFC;
+            --icon-user-green: #34C759;
+            --icon-user-teal: #30B0C7;
+            --icon-user-purple: #AF52DE;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 模式切换器 */
+        .mode-switcher {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            background: #fff;
+            border-radius: 8px;
+            padding: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            gap: 4px;
+        }
+        .mode-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-sub);
+        }
+        .mode-btn.active {
+            background: var(--primary-blue);
+            color: #fff;
+            font-weight: 500;
+        }
+
+        .mobile-shell {
+            width: 375px;
+            height: 812px;
+            background: #fff;
+            position: relative;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            border-radius: 40px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .status-bar { height: 44px; width: 100%; background: #fff; flex-shrink: 0; }
+        .nav-bar {
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            background: #fff;
+            flex-shrink: 0;
+        }
+        .nav-back { cursor: pointer; font-size: 20px; padding: 5px; width: 40px;}
+        .nav-title { font-weight: 600; font-size: 17px; }
+        .nav-actions { font-size: 20px; letter-spacing: 1px; width: 40px; text-align: right; color: var(--text-main);}
+
+        .sticky-header {
+            background: #fff;
+            padding-bottom: 8px;
+            z-index: 10;
+            border-bottom: 0.5px solid var(--border-color);
+        }
+
+        .breadcrumbs {
+            padding: 8px 16px;
+            font-size: 13px;
+            color: var(--text-sub);
+            white-space: nowrap;
+            overflow-x: auto;
+            scrollbar-width: none; 
+            display: flex;
+            align-items: center;
+            height: 30px;
+        }
+        .breadcrumbs::-webkit-scrollbar { display: none; }
+        .crumb-item {
+            color: var(--text-main);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .crumb-item.active {
+            color: var(--primary-blue);
+            font-weight: 500;
+        }
+        .crumb-separator {
+            margin: 0 4px;
+            color: var(--text-sub);
+            font-size: 10px;
+            flex-shrink: 0;
+        }
+
+        .search-container { padding: 6px 16px; }
+        .search-box {
+            background: var(--bg-gray);
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+        }
+        .search-icon { color: var(--text-sub); margin-right: 8px; }
+        .search-input {
+            border: none;
+            background: transparent;
+            flex: 1;
+            font-size: 14px;
+            outline: none;
+            color: var(--text-main);
+        }
+
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            background: #fff;
+        }
+
+        .list-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 0.5px solid #F0F0F0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .list-item:active { background-color: var(--bg-gray); }
+        
+        .avatar {
+            width: 40px; height: 40px; border-radius: 8px;
+            display: flex; justify-content: center; align-items: center;
+            margin-right: 12px; flex-shrink: 0; color: #fff; font-size: 14px; font-weight: 500;
+        }
+        .avatar.org {
+            background-color: var(--icon-org-bg);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' width='20' height='20'%3E%3Cpath d='M12 2L2 7V17L12 22L22 17V7L12 2Z' fill='none' stroke='white' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M12 22V12' stroke='white' stroke-width='2'/%3E%3Cpath d='M2 7L12 12L22 7' stroke='white' stroke-width='2'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .user-round { border-radius: 50%; } 
+        .avatar.user-blue { background-color: var(--icon-user-blue); }
+        .avatar.user-green { background-color: var(--icon-user-green); }
+        .avatar.user-teal { background-color: var(--icon-user-teal); }
+        .avatar.user-purple { background-color: var(--icon-user-purple); }
+
+        .info {
+            flex: 1; display: flex; flex-direction: column; overflow: hidden;
+        }
+        .name {
+            font-size: 16px; color: var(--text-main); margin-bottom: 2px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .sub-info {
+            font-size: 12px; color: var(--text-sub);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .highlight { color: var(--primary-blue); font-weight: bold; }
+        .arrow { color: #C7C7CC; font-size: 18px; margin-left: 8px;}
+        .tag-group { display: flex; gap: 4px; }
+        .tag {
+            background: #E1F0FF; color: var(--primary-blue); font-size: 10px; padding: 1px 5px; border-radius: 4px;
+        }
+        .desktop-hint {
+            position: absolute; bottom: 20px; color: #666; font-size: 14px; text-align: center; width: 100%;
+        }
+        /* 调试状态显示 */
+        .debug-fixed {
+            position: absolute; top:0; left: -260px; width: 240px; background: rgba(0,0,0,0.8); color: #0f0; 
+            font-family: monospace; padding: 10px; border-radius: 8px; font-size: 12px; height: 300px; overflow-y:auto;
+        }
+
+        /* 通讯录页面样式 */
+        .page {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .page.active {
+            display: flex;
+        }
+
+        /* 标签页切换 */
+        .tabs {
+            display: flex;
+            padding: 0 16px;
+            border-bottom: 0.5px solid var(--border-color);
+            background: #fff;
+        }
+        .tab {
+            padding: 12px 0;
+            margin-right: 24px;
+            font-size: 16px;
+            color: var(--text-sub);
+            cursor: pointer;
+            position: relative;
+            border: none;
+            background: transparent;
+        }
+        .tab.active {
+            color: var(--primary-blue);
+            font-weight: 500;
+        }
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--primary-blue);
+        }
+
+        /* 通讯录搜索框 */
+        .contact-search-container {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #fff;
+        }
+        .contact-search-box {
+            flex: 1;
+            background: var(--bg-gray);
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+        }
+        .contact-add-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: var(--bg-gray);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        /* 分类项（部门、角色） */
+        .category-section {
+            background: #fff;
+            border-bottom: 8px solid var(--bg-gray);
+        }
+        .category-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 0.5px solid #F0F0F0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .category-item:active {
+            background-color: var(--bg-gray);
+        }
+        .category-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 20px;
+        }
+        .category-icon.dept {
+            background-color: var(--icon-org-bg);
+        }
+        .category-icon.role {
+            background-color: var(--icon-user-blue);
+        }
+
+        /* 成员列表标题 */
+        .section-title {
+            padding: 12px 16px;
+            font-size: 14px;
+            color: var(--text-sub);
+            background: #fff;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 模式切换器 -->
+    <div class="mode-switcher">
+        <button class="mode-btn active" data-mode="parent" onclick="switchMode('parent')">返回上一层</button>
+        <button class="mode-btn" data-mode="back" onclick="switchMode('back')">返回=回退</button>
+    </div>
+
+    <!-- 调试面板：用于直观展示栈的变化 -->
+    <div class="debug-fixed" id="debugPanel" style="display: none;">History Stack:</div>
+
+    <div class="mobile-shell">
+        <div class="status-bar"></div>
+
+        <!-- 通讯录页面 -->
+        <div class="page active" id="contactPage">
+            <div class="nav-bar">
+                <div class="nav-back" style="visibility: hidden;">❮</div>
+                <div class="nav-title">通讯录</div>
+                <div class="nav-actions">
+                    <span style="margin-right: 8px;">•••</span>
+                    <span>◎</span>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('internal')">内部组织</button>
+                <button class="tab" onclick="switchTab('external')">外部组织</button>
+            </div>
+
+            <div class="contact-search-container">
+                <div class="contact-search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="search-input" id="contactSearchInput" placeholder="搜索成员" autocomplete="off">
+                </div>
+                <div class="contact-add-btn">👥</div>
+            </div>
+
+            <div class="content-area">
+                <div class="category-section">
+                    <div class="category-item" onclick="enterOrgStructure()">
+                        <div class="category-icon dept">🏢</div>
+                        <div class="info">
+                            <div class="name">部门</div>
+                        </div>
+                        <div class="arrow">›</div>
+                    </div>
+                    <div class="category-item">
+                        <div class="category-icon role">👥</div>
+                        <div class="info">
+                            <div class="name">角色</div>
+                        </div>
+                        <div class="arrow">›</div>
+                    </div>
+                </div>
+
+                <div class="section-title">全部成员</div>
+                <div id="memberList"></div>
+            </div>
+        </div>
+
+        <!-- 组织架构页面 -->
+        <div class="page" id="orgPage">
+            <div class="nav-bar">
+                <div class="nav-back" onclick="goBackFromOrg()">❮</div>
+                <div class="nav-title">组织架构</div>
+                <div class="nav-actions">•••</div>
+            </div>
+
+            <div class="sticky-header">
+                <div class="breadcrumbs" id="breadcrumbs"></div>
+                <div class="search-container">
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" class="search-input" id="searchInput" placeholder="搜索部门、成员" autocomplete="off">
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-area" id="listContainer"></div>
+        </div>
+    </div>
+
+    <div class="desktop-hint" id="desktopHint"></div>
+
+<script>
+    // 1. 数据结构（使用更详细的版本）
+    const orgData = [
+        {
+            id: 'root', name: '未来科技集团', type: 'dept',
+            children: [
+                {
+                    id: 'L2-tech', name: '产研中心', type: 'dept', children: [
+                        {
+                            id: 'L3-dev', name: '技术部', type: 'dept', children: [
+                                {
+                                    id: 'L4-backend', name: '后端架构组', type: 'dept', children: [
+                                        { id: 'L5-pay', name: '支付中台小队', type: 'dept', children: [
+                                                { id: 'u-pay-1', name: '张架构', type: 'user', colorClass: 'user-blue', title: 'P8' },
+                                                { id: 'u-pay-2', name: '王代码', type: 'user', colorClass: 'user-green', title: 'P7' }
+                                        ]},
+                                        { id: 'u-bk-lead', name: '赵后端', type: 'user', colorClass: 'user-purple', title: 'TL' }
+                                    ]
+                                },
+                            ]
+                        },
+                        { id: 'L3-prod', name: '产品部', type: 'dept', children: [] }
+                    ]
+                },
+                {
+                    id: 'L2-sale', name: '营销中心', type: 'dept', children: [
+                        { id: 'L3-east', name: '华东大区', type: 'dept', children: [] }
+                    ]
+                },
+                { id: 'u-ceo', name: '钱CEO', type: 'user', colorClass: 'user-blue', title: 'CEO' }
+            ]
+        }
+    ];
+
+    // 2. 成员数据（用于通讯录页面）
+    const memberData = [
+        { id: 'm1', name: 'Zui', colorClass: 'user-blue', title: '企业创建者' },
+        { id: 'm2', name: '成员1', colorClass: 'user-blue' },
+        { id: 'm3', name: '成员2', colorClass: 'user-green' },
+        { id: 'm4', name: '成员3', colorClass: 'user-teal' },
+        { id: 'm5', name: '成员4', colorClass: 'user-purple' },
+        { id: 'm6', name: '成员5', colorClass: 'user-blue' },
+    ];
+
+    // 3. 状态管理
+    let currentMode = 'parent'; // 'parent' 或 'back'
+    let navigationStack = [{ id: 'root', keyword: '' }]; 
+    let currentPage = 'contact'; // 'contact' 或 'org'
+    let currentTab = 'internal'; // 'internal' 或 'external'
+
+    const listContainer = document.getElementById('listContainer');
+    const breadcrumbsContainer = document.getElementById('breadcrumbs');
+    const searchInput = document.getElementById('searchInput');
+    const debugPanel = document.getElementById('debugPanel');
+    const desktopHint = document.getElementById('desktopHint');
+    const contactPage = document.getElementById('contactPage');
+    const orgPage = document.getElementById('orgPage');
+    const contactSearchInput = document.getElementById('contactSearchInput');
+    const memberList = document.getElementById('memberList');
+
+    // 辅助函数
+    function findNodeById(id, nodes = orgData) {
+        for (let node of nodes) {
+            if (node.id === id) return node;
+            if (node.children) {
+                const found = findNodeById(id, node.children);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+
+    function getPath(targetId, nodes = orgData, currentPath = []) {
+        for (let node of nodes) {
+            const newPath = [...currentPath, node];
+            if (node.id === targetId) return newPath;
+            if (node.children) {
+                const childPath = getPath(targetId, node.children, newPath);
+                if (childPath) return childPath;
+            }
+        }
+        return null;
+    }
+
+    function searchGlobal(keyword, startNodeId) {
+        let results = [];
+        // 找到起始节点
+        const startNode = findNodeById(startNodeId);
+        if (!startNode) return results;
+        
+        // 只搜索起始节点及其子节点
+        function traverse(nodes, parentPathName) {
+            nodes.forEach(node => {
+                if (node.name.includes(keyword)) results.push({ ...node, fullPathName: parentPathName });
+                if (node.children) traverse(node.children, parentPathName ? `${parentPathName} / ${node.name}` : node.name);
+            });
+        }
+        
+        // 从起始节点的子节点开始搜索（不包括起始节点本身）
+        if (startNode.children) {
+            traverse(startNode.children, startNode.name);
+        }
+        
+        return results;
+    }
+
+    function highlightText(text, keyword) {
+        if (!keyword) return text;
+        const reg = new RegExp(`(${keyword})`, 'gi');
+        return text.replace(reg, '<span class="highlight">$1</span>');
+    }
+
+    // 3. 页面切换和通讯录相关函数
+    window.switchTab = function(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab').forEach((t, index) => {
+            if ((tab === 'internal' && index === 0) || (tab === 'external' && index === 1)) {
+                t.classList.add('active');
+            } else {
+                t.classList.remove('active');
+            }
+        });
+        renderContactPage();
+    };
+
+    window.enterOrgStructure = function() {
+        currentPage = 'org';
+        contactPage.classList.remove('active');
+        orgPage.classList.add('active');
+        // 重置组织架构状态
+        navigationStack = [{ id: 'root', keyword: '' }];
+        render();
+    };
+
+    window.goBackFromOrg = function() {
+        // 返回通讯录页面
+        currentPage = 'contact';
+        contactPage.classList.add('active');
+        orgPage.classList.remove('active');
+    };
+
+    function renderContactPage() {
+        const keyword = contactSearchInput.value.trim();
+        let filteredMembers = memberData;
+        
+        if (keyword) {
+            filteredMembers = memberData.filter(m => m.name.includes(keyword));
+        }
+
+        memberList.innerHTML = '';
+        if (filteredMembers.length === 0) {
+            memberList.innerHTML = '<div style="text-align:center;color:#999;padding:20px">无结果</div>';
+        } else {
+            filteredMembers.forEach(member => {
+                const el = document.createElement('div');
+                el.className = 'list-item';
+                el.innerHTML = `
+                    <div class="avatar ${member.colorClass} user-round">${member.name[0]}</div>
+                    <div class="info">
+                        <div class="name">${highlightText(member.name, keyword)}</div>
+                    </div>
+                    ${member.title ? `<div class="tag-group"><div class="tag">${member.title}</div></div>` : ''}
+                `;
+                memberList.appendChild(el);
+            });
+        }
+    }
+
+    // 通讯录搜索监听
+    contactSearchInput.addEventListener('input', () => {
+        renderContactPage();
+    });
+
+    // 4. 模式切换
+    window.switchMode = function(mode) {
+        currentMode = mode;
+        
+        // 更新按钮状态
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.mode === mode);
+        });
+        
+        // 重置状态栈
+        navigationStack = [{ id: 'root', keyword: '' }];
+        
+        // 更新提示文本
+        updateHint();
+        
+        // 显示/隐藏调试面板（仅在回退模式下显示）
+        debugPanel.style.display = mode === 'back' ? 'block' : 'none';
+        
+        // 只在组织架构页面时渲染
+        if (currentPage === 'org') {
+            render();
+        }
+    };
+
+    function updateHint() {
+        if (currentMode === 'parent') {
+            desktopHint.innerHTML = `
+                场景测试（返回上一层模式）：<br>
+                1. 在"集团"输入"中心"搜索 -> 2. 点击进入"产研中心" -> 3. 输入"部"搜索 <br> 
+                4. 点击面包屑上的"未来科技集团" -> <b>验证：应恢复第1步的搜索词"中心"</b>
+            `;
+        } else {
+            desktopHint.innerHTML = `
+                <b>逻辑测试（返回=回退模式）：</b><br>
+                1. 依次进入: 集团 -> 产研 -> 技术部 (列表显示技术部)<br>
+                2. 点击面包屑上的 "集团" (回到首页)<br>
+                3. <b>点击左上角返回</b> -> 预期：回到 "技术部"
+            `;
+        }
+    }
+
+    // 4. 核心交互方法 - 根据模式切换实现
+
+    // 模式1：返回上一层（slice策略）
+    function jumpToNodesParent(targetId) {
+        const indexInStack = navigationStack.findIndex(item => item.id === targetId);
+        
+        if (indexInStack !== -1) {
+            // 策略 A：如果历史栈里有，做"时光倒流"
+            navigationStack = navigationStack.slice(0, indexInStack + 1);
+        } else {
+            // 策略 B：如果历史栈里没有，构建完整路径
+            const path = getPath(targetId);
+            if (path) {
+                const newStack = [];
+                for (let i = 0; i < path.length; i++) {
+                    const nodeId = path[i].id;
+                    const existingState = navigationStack.find(item => item.id === nodeId);
+                    newStack.push({ 
+                        id: nodeId, 
+                        keyword: existingState ? existingState.keyword : '' 
+                    });
+                }
+                navigationStack = newStack;
+            } else {
+                navigationStack = [{ id: targetId, keyword: '' }];
+            }
+        }
+        
+        render();
+    }
+
+    // 模式2：返回=回退（push策略）
+    function jumpToNodesBack(targetId) {
+        let restoredKeyword = '';
+        
+        // 倒序查找，找到最近一次访问该ID的状态
+        for (let i = navigationStack.length - 1; i >= 0; i--) {
+            if (navigationStack[i].id === targetId) {
+                restoredKeyword = navigationStack[i].keyword;
+                break;
+            }
+        }
+
+        // Push 新增，而不是 Slice
+        navigationStack.push({ 
+            id: targetId, 
+            keyword: restoredKeyword 
+        });
+        
+        render();
+    }
+
+    window.jumpToNodes = function(targetId) {
+        if (currentMode === 'parent') {
+            jumpToNodesParent(targetId);
+        } else {
+            jumpToNodesBack(targetId);
+        }
+    };
+
+    window.enterDept = function(deptId) {
+        if (currentMode === 'parent') {
+            // 模式1：保存当前搜索状态
+            const currentState = navigationStack[navigationStack.length - 1];
+            if (currentState) {
+                currentState.keyword = searchInput.value.trim();
+            }
+            navigationStack.push({ id: deptId, keyword: '' });
+        } else {
+            // 模式2：直接入栈
+            navigationStack.push({ id: deptId, keyword: '' });
+        }
+        render();
+    };
+
+    window.goBack = function() {
+        // 如果不在组织架构页面，不处理
+        if (currentPage !== 'org') return;
+        
+        // 检查是否应该返回通讯录页面
+        // 如果栈中只有一个元素且是 root，无论是否有搜索关键词，都应该能返回通讯录
+        const currentState = navigationStack[navigationStack.length - 1];
+        if (navigationStack.length === 1 && currentState.id === 'root') {
+            goBackFromOrg();
+            return;
+        }
+        
+        if (currentMode === 'parent') {
+            // 模式1：返回到父节点
+            const path = getPath(currentState.id);
+            
+            if (path && path.length > 1) {
+                const parentNode = path[path.length - 2];
+                jumpToNodes(parentNode.id);
+            } else if (navigationStack.length > 1) {
+                navigationStack.pop();
+                render();
+            } else {
+                // 如果已经在根节点，返回通讯录
+                goBackFromOrg();
+            }
+        } else {
+            // 模式2：简单的 Pop
+            if (navigationStack.length > 1) {
+                navigationStack.pop();
+                render();
+            } else {
+                // 如果已经在根节点，返回通讯录
+                goBackFromOrg();
+            }
+        }
+    };
+
+    // 渲染 UI
+    function render() {
+        // 只在组织架构页面时渲染
+        if (currentPage !== 'org') return;
+        
+        const state = navigationStack[navigationStack.length - 1];
+        
+        // 更新调试面板（仅在回退模式下）
+        if (currentMode === 'back') {
+            updateDebugPanel();
+        }
+
+        // 恢复输入框内容
+        searchInput.value = state.keyword;
+
+        // 渲染面包屑
+        const path = getPath(state.id);
+        if (path) {
+            let breadHtml = path.map((node, index) => {
+                const isLast = index === path.length - 1;
+                return `
+                    <span class="crumb-item ${isLast ? 'active' : ''}" 
+                          onclick="${!isLast ? `jumpToNodes('${node.id}')` : ''}">${node.name}</span>
+                    ${!isLast ? '<span class="crumb-separator">&gt;</span>' : ''}
+                `;
+            }).join('');
+            breadcrumbsContainer.innerHTML = breadHtml;
+            breadcrumbsContainer.scrollLeft = breadcrumbsContainer.scrollWidth;
+        }
+
+        // 渲染列表
+        listContainer.innerHTML = '';
+        
+        if (state.keyword) {
+            // 搜索态 - 只搜索当前节点及其子节点
+            const results = searchGlobal(state.keyword, state.id);
+            if(results.length === 0) {
+                listContainer.innerHTML = '<div style="text-align:center;color:#999;padding:20px">无结果</div>';
+            } else {
+                results.forEach(item => {
+                   const el = document.createElement('div');
+                   el.className = 'list-item';
+                   
+                   if(item.type === 'dept') {
+                       if (currentMode === 'parent') {
+                           // 模式1：使用 jumpToNodes
+                           el.onclick = () => {
+                               const currentState = navigationStack[navigationStack.length - 1];
+                               if (currentState) {
+                                   currentState.keyword = searchInput.value.trim();
+                               }
+                               jumpToNodes(item.id);
+                           };
+                       } else {
+                           // 模式2：使用 enterDept
+                           el.onclick = () => enterDept(item.id);
+                       }
+                   }
+                   
+                   const displayPath = item.fullPathName ? item.fullPathName.replace(/\s\/\s/g, ' > ') : '';
+                   el.innerHTML = `
+                       <div class="avatar ${item.type === 'dept' ? 'org' : (item.colorClass||'user-blue')} ${item.type === 'user' ? 'user-round' : ''}">${item.type==='user'?item.name[0]:''}</div>
+                       <div class="info">
+                           <div class="name">${highlightText(item.name, state.keyword)}</div>
+                           <div class="sub-info">来自: ${displayPath}</div>
+                       </div>
+                       ${item.type==='dept'?'<div class="arrow">›</div>':''}
+                   `;
+                   listContainer.appendChild(el);
+                });
+            }
+        } else {
+            // 浏览态
+            const node = findNodeById(state.id);
+            if (node && node.children) {
+                 const sorted = [...node.children].sort((a,b)=> (a.type===b.type)?0:(a.type==='dept'?-1:1));
+                 sorted.forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = 'list-item';
+                    if(item.type === 'dept') el.onclick = () => enterDept(item.id);
+                    el.innerHTML = `
+                        <div class="avatar ${item.type === 'dept' ? 'org' : (item.colorClass||'user-blue')} ${item.type === 'user' ? 'user-round' : ''}">${item.type==='user'?item.name[0]:''}</div>
+                        <div class="info"><div class="name">${item.name}</div></div>
+                        ${item.title ? `<div class="tag-group"><div class="tag">${item.title}</div></div>` : ''}
+                        ${item.type==='dept'?'<div class="arrow">›</div>':''}
+                    `;
+                    listContainer.appendChild(el);
+                 });
+            }
+        }
+    }
+
+    function updateDebugPanel() {
+        debugPanel.innerHTML = '<strong>History Stack (Bottom to Top):</strong><br><br>' + 
+            navigationStack.map((s, i) => {
+                const node = findNodeById(s.id);
+                const name = node ? node.name : s.id;
+                const kw = s.keyword ? ` [🔍"${s.keyword}"]` : '';
+                return `${i + 1}. ${name}${kw}${i===navigationStack.length-1 ? ' <span style="color:yellow">← 当前</span>' : ''}`;
+            }).join('<br>');
+        debugPanel.scrollTop = debugPanel.scrollHeight;
+    }
+
+    // 输入监听
+    searchInput.addEventListener('input', (e) => {
+        const val = e.target.value.trim();
+        const currentState = navigationStack[navigationStack.length - 1];
+        currentState.keyword = val;
+        render();
+    });
+
+    document.addEventListener('keydown', (e) => { 
+        if (currentPage === 'org' && e.key === 'ArrowLeft') {
+            goBack();
+        }
+    });
+
+    // 初始化
+    updateHint();
+    renderContactPage(); // 初始化通讯录页面
+</script>
+</body>
+</html>
+

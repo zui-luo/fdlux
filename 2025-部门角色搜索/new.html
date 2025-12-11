@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台 - 组织架构</title>
+    <!-- 引入 FontAwesome 图标库 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #00bfa5; /* 青绿色主色 */
+            --primary-light: #e0f7f3;
+            --text-main: #333333;
+            --text-secondary: #666666;
+            --text-light: #999999;
+            --bg-body: #f0f2f5;
+            --bg-sidebar: #f2f3f5;
+            --bg-white: #ffffff;
+            --border-color: #e8e8e8;
+            --hover-bg: #f5f5f5;
+            --tag-crm-bg: #e6f7ff;
+            --tag-crm-text: #1890ff;
+            --tag-role-bg: #f9f0ff;
+            --tag-role-text: #722ed1;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            font-size: 14px;
+        }
+
+        /* --- 左侧导航栏 --- */
+        .sidebar {
+            width: 220px;
+            background-color: var(--bg-sidebar);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid transparent;
+            padding: 16px 0;
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
+
+        .app-header {
+            padding: 0 20px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-main);
+        }
+        
+        .app-header i { color: var(--primary-color); }
+
+        .menu-category {
+            font-size: 12px;
+            color: var(--text-light);
+            padding: 12px 20px 8px;
+        }
+
+        .menu-item {
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .menu-item:hover {
+            color: var(--text-main);
+        }
+
+        .menu-item.active {
+            background-color: var(--bg-white);
+            color: var(--primary-color);
+            margin: 0 8px;
+            border-radius: 4px;
+            padding-left: 12px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+        }
+
+        .menu-item i {
+            width: 16px; 
+            text-align: center;
+        }
+
+        /* --- 主内容区容器 --- */
+        .main-container {
+            flex: 1;
+            display: flex;
+            margin: 16px 16px 16px 0; /* 右上下边距，左边已经在sidebar背景色里 */
+            background-color: var(--bg-white);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden; /* 防止内容溢出圆角 */
+        }
+
+        /* --- 中间：组织架构树 --- */
+        .org-tree-panel {
+            width: 280px;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+        }
+
+        .tree-header {
+            padding: 16px;
+        }
+
+        .tab-switch {
+            display: flex;
+            background: #f5f5f5;
+            border-radius: 4px;
+            padding: 2px;
+            margin-bottom: 16px;
+        }
+
+        .tab-item {
+            flex: 1;
+            text-align: center;
+            padding: 6px 0;
+            font-size: 13px;
+            cursor: pointer;
+            border-radius: 2px;
+            color: var(--text-secondary);
+        }
+
+        .tab-item.active {
+            background: #fff;
+            color: var(--primary-color);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            font-weight: 500;
+        }
+
+        .quick-actions {
+            margin-bottom: 12px;
+        }
+
+        .qa-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        .qa-item:hover { background-color: var(--hover-bg); }
+        .qa-item.active {
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+        }
+        .qa-item i { width: 16px; }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 10px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 8px 30px 8px 32px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 13px;
+            outline: none;
+        }
+        .search-box i.fa-search {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+        }
+        .search-box i.fa-times {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+            cursor: pointer;
+        }
+
+        .tree-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 8px 16px 8px;
+        }
+
+        .tree-node {
+            display: flex;
+            align-items: center;
+            padding: 8px 8px;
+            cursor: pointer;
+            border-radius: 4px;
+            color: var(--text-main);
+            font-size: 13px;
+        }
+
+        .tree-node:hover { background-color: var(--hover-bg); }
+        
+        .tree-node.selected {
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+        }
+
+        .tree-indent { width: 14px; display: inline-block; }
+        .tree-toggle { 
+            width: 16px; 
+            text-align: center; 
+            color: var(--text-light); 
+            font-size: 10px; 
+            margin-right: 4px;
+        }
+        .tree-icon {
+            margin-right: 6px;
+            color: var(--primary-color);
+        }
+
+        /* --- 右侧：数据表格 --- */
+        .table-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        /* 模拟 Toggle Switch */
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            color: var(--text-main);
+            gap: 8px;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 36px;
+            height: 20px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: var(--primary-color);
+        }
+        input:checked + .slider:before {
+            transform: translateX(16px);
+        }
+
+        /* 工具栏 */
+        .toolbar {
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tool-left { display: flex; gap: 12px; }
+        .tool-right { display: flex; gap: 12px; align-items: center; }
+
+        .btn {
+            padding: 7px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            outline: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .btn-primary:hover { background-color: #00a891; }
+
+        .btn-default {
+            background-color: white;
+            border-color: var(--border-color);
+            color: var(--text-main);
+        }
+        .btn-default:hover { border-color: var(--primary-color); color: var(--primary-color); }
+
+        .dropdown-trigger {
+            border: 1px solid var(--border-color);
+            padding: 7px 12px;
+            border-radius: 4px;
+            color: var(--text-main);
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+        }
+        
+        .search-input-group {
+            position: relative;
+            width: 200px;
+        }
+        .search-input-group input {
+            width: 100%;
+            padding: 7px 12px 7px 30px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            outline: none;
+            font-size: 13px;
+        }
+        .search-input-group i {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+        }
+
+        /* 表格区域 */
+        .table-container {
+            flex: 1;
+            overflow: auto;
+            padding: 0 24px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px 10px;
+            background-color: #f8f9fa;
+            color: var(--text-secondary);
+            font-weight: 500;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #f0f0f0;
+            color: var(--text-main);
+            vertical-align: middle;
+        }
+
+        tr:hover td {
+            background-color: #fbfbfb;
+        }
+
+        /* Checkbox style */
+        .custom-checkbox {
+            width: 16px;
+            height: 16px;
+            border: 1px solid #d9d9d9;
+            border-radius: 2px;
+            display: inline-block;
+            position: relative;
+            cursor: pointer;
+            vertical-align: text-bottom;
+        }
+
+        /* User Info in Table */
+        .cell-user {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        /* Tags */
+        .role-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-right: 6px;
+        }
+        .tag-blue { background-color: var(--tag-crm-bg); color: var(--tag-crm-text); }
+        .tag-purple { background-color: var(--tag-role-bg); color: var(--tag-role-text); }
+
+        .table-action i {
+            color: var(--text-light);
+            cursor: pointer;
+        }
+
+        /* 帮助图标 */
+        .icon-help {
+            color: #b0b0b0;
+            margin-left: 4px;
+            font-size: 12px;
+        }
+
+        /* 分页 */
+        .pagination {
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .page-ctrl {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .page-btn {
+            width: 28px;
+            height: 28px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background: white;
+            font-size: 12px;
+        }
+        .page-btn:hover { border-color: var(--primary-color); color: var(--primary-color); }
+        .page-btn.active { border-color: var(--primary-color); color: var(--primary-color); border: 1px solid var(--primary-color); }
+        
+        .page-select {
+            border: 1px solid var(--border-color);
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: white;
+            color: var(--text-main);
+        }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #ccc; }
+
+    </style>
+</head>
+<body>
+
+    <!-- 左侧侧边栏 -->
+    <nav class="sidebar">
+        <div class="app-header">
+            <i class="fa-solid fa-gear"></i>
+            <span>管理后台</span>
+            <!-- 返回图标放在最右边如果需要，截图没有明确显示，略过 -->
+        </div>
+
+        <div class="menu-category">基本信息</div>
+        <a href="#" class="menu-item"><i class="fa-solid fa-table-cells-large"></i> 产品中心</a>
+        <a href="#" class="menu-item"><i class="fa-solid fa-layer-group"></i> 版本信息</a>
+        <a href="#" class="menu-item"><i class="fa-solid fa-file-invoice"></i> 订单信息</a>
+        <a href="#" class="menu-item"><i class="fa-regular fa-building"></i> 企业信息</a>
+
+        <div class="menu-category">通讯录</div>
+        <a href="#" class="menu-item active"><i class="fa-solid fa-sitemap"></i> 内部组织</a>
+        <a href="#" class="menu-item"><i class="fa-solid fa-share-nodes"></i> 外部组织</a>
+
+        <div class="menu-category">权限中心</div>
+        <a href="#" class="menu-item"><i class="fa-solid fa-user-shield"></i> 管理员</a>
+        <a href="#" class="menu-item"><i class="fa-solid fa-lock"></i> 权限组查询</a>
+
+        <div class="menu-category">管理工具</div>
+        <a href="#" class="menu-item"><i class="fa-solid fa-sliders"></i> 企业设置</a>
+        <a href="#" class="menu-item"><i class="fa-solid fa-box-open"></i> 产品设置</a>
+        <a href="#" class="menu-item"><i class="fa-regular fa-envelope"></i> 消息推送</a>
+        <a href="#" class="menu-item"><i class="fa-solid fa-chart-line"></i> 使用统计</a>
+
+        <div class="menu-category">日志审计</div>
+        <a href="#" class="menu-item"><i class="fa-solid fa-file-lines"></i> 企业日志</a>
+        <a href="#" class="menu-item"><i class="fa-solid fa-clipboard-list"></i> 产品日志</a>
+    </nav>
+
+    <!-- 主体内容 -->
+    <div class="main-container">
+        
+        <!-- 中间：组织架构树 -->
+        <div class="org-tree-panel">
+            <div class="tree-header">
+                <div class="tab-switch">
+                    <div class="tab-item active">部门</div>
+                    <div class="tab-item">角色</div>
+                </div>
+                
+                <div class="quick-actions">
+                    <div class="qa-item"><i class="fa-solid fa-users"></i> 全部成员</div>
+                    <div class="qa-item"><i class="fa-solid fa-user-minus"></i> 离职成员</div>
+                </div>
+
+                <div class="search-box">
+                    <i class="fa-solid fa-search"></i>
+                    <input type="text" placeholder="招">
+                    <i class="fa-solid fa-times"></i>
+                </div>
+                
+                <div style="font-size: 12px; color: #999; margin-bottom: 8px;">部门</div>
+            </div>
+
+            <div class="tree-content">
+                <!-- 树形结构模拟 -->
+                <div class="tree-node">
+                    <div class="tree-toggle"><i class="fa-solid fa-caret-down"></i></div>
+                    <i class="fa-solid fa-sitemap tree-icon" style="color: #00bfa5;"></i> XX公司
+                </div>
+                
+                <div class="tree-node">
+                    <span class="tree-indent"></span>
+                    <div class="tree-toggle"><i class="fa-solid fa-caret-down"></i></div>
+                    <i class="fa-solid fa-building tree-icon"></i> 行政中心
+                </div>
+
+                <div class="tree-node">
+                    <span class="tree-indent"></span>
+                    <span class="tree-indent"></span>
+                    <div class="tree-toggle"><i class="fa-solid fa-caret-down"></i></div>
+                    <i class="fa-solid fa-user-group tree-icon"></i> 人事部门
+                </div>
+
+                <div class="tree-node">
+                    <span class="tree-indent"></span>
+                    <span class="tree-indent"></span>
+                    <span class="tree-indent"></span>
+                    <div class="tree-toggle"><i class="fa-solid fa-caret-down"></i></div>
+                    <i class="fa-solid fa-user-group tree-icon"></i> 招聘组
+                </div>
+
+                <div class="tree-node selected">
+                    <span class="tree-indent"></span>
+                    <span class="tree-indent"></span>
+                    <span class="tree-indent"></span>
+                    <span class="tree-indent"></span>
+                    <!-- 没箭头表示叶子节点 -->
+                    <i class="fa-solid fa-user-group tree-icon"></i> 应届生招聘...
+                </div>
+                 <div class="tree-node">
+                    <span class="tree-indent"></span>
+                    <span class="tree-indent"></span>
+                    <span class="tree-indent"></span>
+                     <span class="tree-indent"></span>
+                    <i class="fa-solid fa-user-group tree-icon"></i> 社会招聘组
+                </div>
+
+                <div class="tree-node">
+                    <span class="tree-indent"></span>
+                    <div class="tree-toggle"><i class="fa-solid fa-caret-right"></i></div>
+                    <i class="fa-solid fa-sitemap tree-icon"></i> 技术中心
+                </div>
+                <div class="tree-node">
+                    <span class="tree-indent"></span>
+                    <div class="tree-toggle"><i class="fa-solid fa-caret-right"></i></div>
+                    <i class="fa-solid fa-sitemap tree-icon"></i> 业务中心
+                </div>
+                 <div class="tree-node">
+                    <span class="tree-indent"></span>
+                    <div class="tree-toggle"><i class="fa-solid fa-caret-down"></i></div>
+                    <i class="fa-solid fa-sitemap tree-icon"></i> 市场中心
+                </div>
+                <div class="tree-node">
+                    <span class="tree-indent"></span>
+                    <span class="tree-indent"></span>
+                     <div class="tree-indent"></div>
+                    <i class="fa-solid fa-user-group tree-icon"></i> 品牌组
+                </div>
+                 <div class="tree-node">
+                    <span class="tree-indent"></span>
+                    <span class="tree-indent"></span>
+                     <div class="tree-indent"></div>
+                    <i class="fa-solid fa-user-group tree-icon"></i> 渠道组
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 右侧：表格数据 -->
+        <div class="table-panel">
+            <div class="panel-header">
+                <div class="panel-title">应届生招聘组</div>
+                <div class="toggle-switch">
+                    <label class="switch">
+                        <input type="checkbox" checked>
+                        <span class="slider"></span>
+                    </label>
+                    允许成员修改姓名
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <div class="tool-left">
+                    <button class="btn btn-primary">邀请成员</button>
+                    <button class="btn btn-default">导出</button>
+                </div>
+                <div class="tool-right">
+                    <div style="font-size: 13px; color: #666;">账号状态</div>
+                    <div class="dropdown-trigger">
+                         全部 <i class="fa-solid fa-angle-down" style="font-size: 10px;"></i>
+                    </div>
+                    <div class="search-input-group">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" placeholder="搜索成员">
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="40"><span class="custom-checkbox"></span></th>
+                            <th>姓名</th>
+                            <th>手机 <i class="fa-regular fa-circle-question icon-help"></i></th>
+                            <th>邮箱 <i class="fa-regular fa-circle-question icon-help"></i></th>
+                            <th>角色</th>
+                            <th width="60">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="custom-checkbox"></span></td>
+                            <td>
+                                <div class="cell-user">
+                                    <img src="https://i.pravatar.cc/150?u=a042581f4e29026024d" class="avatar" alt="Avatar">
+                                    <span>何炜亭</span>
+                                </div>
+                            </td>
+                            <td style="color: #555;">+86-15048847612</td>
+                            <td style="color: #555;">sichai_feng@gmail.com</td>
+                            <td>
+                                <span class="role-tag tag-blue"><i class="fa-solid fa-user"></i> CRM管理员</span>
+                                <span class="role-tag tag-purple"><i class="fa-solid fa-user-tag"></i> 角色</span>
+                            </td>
+                            <td class="table-action"><i class="fa-solid fa-ellipsis-vertical"></i></td>
+                        </tr>
+                        <tr>
+                            <td><span class="custom-checkbox"></span></td>
+                            <td>
+                                <div class="cell-user">
+                                    <img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" class="avatar" alt="Avatar">
+                                    <span>周逊珊</span>
+                                </div>
+                            </td>
+                            <td style="color: #555;">+86-15048847612</td>
+                            <td style="color: #555;">sichai_feng@gmail.com</td>
+                            <td>
+                                <span class="role-tag tag-blue"><i class="fa-solid fa-user"></i> CRM管理员</span>
+                                <span class="role-tag tag-purple"><i class="fa-solid fa-user-tag"></i> 角色</span>
+                            </td>
+                            <td class="table-action"><i class="fa-solid fa-ellipsis-vertical"></i></td>
+                        </tr>
+                        <!-- 更多空行模拟布局 -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination">
+                <div class="dropdown-trigger" style="border: none; padding: 0;">
+                    <select class="page-select">
+                        <option>20 条/页</option>
+                    </select>
+                </div>
+                
+                <div style="flex: 1; margin-left: 10px;">共100条</div>
+                
+                <div class="page-ctrl">
+                    <div class="page-btn"><i class="fa-solid fa-angles-left"></i></div>
+                    <div class="page-btn"><i class="fa-solid fa-angle-left"></i></div>
+                    <div class="page-btn active">1</div>
+                    <div style="margin: 0 4px;">/ 50</div>
+                    <div class="page-btn"><i class="fa-solid fa-angle-right"></i></div>
+                    <div class="page-btn"><i class="fa-solid fa-angles-right"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 右上角头像，绝对定位模拟 -->
+    <div style="position: absolute; top: 16px; right: 20px;">
+        <img src="https://i.pravatar.cc/150?u=header" style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid white; cursor: pointer;">
+    </div>
+
+</body>
+</html>

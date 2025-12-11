@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>APP组织架构模拟</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --app-bg: #f5f5f5;
+            --text-main: #111111;
+            --text-sub: #888888;
+            --line-color: #eeeeee;
+            --blue: #1677ff;
+            --folder-color: #ffc107;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #e0e0e0; /* 浏览器背景 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* 手机容器模拟 */
+        .mobile-container {
+            width: 375px;
+            height: 750px; /* iPhone SE/Mini 尺寸 */
+            background-color: var(--bg-color);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            border-radius: 12px;
+        }
+
+        /* 页面通用样式 */
+        .page {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+
+        .page.hidden {
+            transform: translateX(100%);
+            pointer-events: none;
+        }
+
+        .page.active {
+            transform: translateX(0);
+        }
+
+        /* 顶部导航栏 */
+        .navbar {
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            border-bottom: 0.5px solid transparent;
+            font-size: 17px;
+            font-weight: 500;
+            background: white;
+            z-index: 10;
+        }
+
+        .nav-left {
+            width: 80px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        
+        .back-icon {
+            width: 10px;
+            height: 18px;
+            background-color: #000;
+            -webkit-mask: url("data:image/svg+xml,%3Csvg width='12' height='24' viewBox='0 0 12 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10.5 22L1.5 12L10.5 2' stroke='black' stroke-width='2' fill='none'/%3E%3C/svg%3E") no-repeat center;
+            mask: url("data:image/svg+xml,%3Csvg width='12' height='24' viewBox='0 0 12 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10.5 22L1.5 12L10.5 2' stroke='black' stroke-width='2' fill='none'/%3E%3C/svg%3E") no-repeat center;
+        }
+
+        .nav-title {
+            flex: 1;
+            text-align: center;
+        }
+
+        /* 模拟右上角胶囊按钮 */
+        .capsule {
+            width: 80px;
+            height: 30px;
+            border: 1px solid #e0e0e0;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 0 8px;
+        }
+        .capsule-dot { width: 4px; height: 4px; background: #000; border-radius: 50%; box-shadow: 6px 0 0 #000, -6px 0 0 #000; }
+        .capsule-line { width: 1px; height: 18px; background: #e0e0e0; }
+        .capsule-circle { width: 16px; height: 16px; border: 1.5px solid #000; border-radius: 50%; position: relative; }
+        .capsule-circle::after { content:''; position: absolute; width:6px; height:6px; background:#000; border-radius:50%; top:50%; left:50%; transform:translate(-50%, -50%); }
+
+        /* 搜索框 */
+        .search-area {
+            padding: 8px 16px;
+            background: #fff;
+        }
+        .search-input-wrapper {
+            background: #f5f5f5;
+            border-radius: 8px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+        }
+        .search-icon {
+            color: #999;
+            margin-right: 6px;
+            font-size: 14px;
+        }
+        .search-input {
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            width: 100%;
+            outline: none;
+            color: var(--text-main);
+        }
+
+        /* 列表区域 */
+        .content-scroll {
+            flex: 1;
+            overflow-y: auto;
+            background-color: #fff;
+        }
+        
+        .section-title {
+            font-size: 12px;
+            color: var(--text-sub);
+            padding: 20px 16px 8px;
+            background: #fff;
+        }
+
+        /* 列表项: 角色组 (文件夹) */
+        .list-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid #f8f8f8;
+            cursor: pointer;
+            background: #fff;
+            transition: background 0.1s;
+        }
+        .list-item:active { background: #f9f9f9; }
+
+        .folder-icon {
+            width: 28px;
+            height: 24px;
+            margin-right: 12px;
+            fill: var(--folder-color);
+        }
+        .item-text {
+            flex: 1;
+            font-size: 16px;
+            color: var(--text-main);
+        }
+        .arrow-icon {
+            color: #ccc;
+            font-size: 12px;
+            transition: transform 0.2s;
+        }
+
+        /* 展开状态 */
+        .role-group.expanded .arrow-icon {
+            transform: rotate(90deg);
+        }
+        .sub-list {
+            display: none;
+            background-color: #fcfcfc;
+        }
+        .role-group.expanded .sub-list {
+            display: block;
+        }
+
+        /* 子项: 具体角色 */
+        .role-item {
+            padding: 14px 16px 14px 56px; /* 缩进 */
+            border-bottom: 1px solid #f8f8f8;
+            color: #333;
+            font-size: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .role-item:active { background: #f0f0f0; }
+        .role-item::after {
+            content: '›';
+            color: #ccc;
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        /* 如果搜索无结果 */
+        .hidden { display: none !important; }
+
+        /* --- Page 2 独有样式 --- */
+        .role-info-header {
+            padding: 4px 16px 12px;
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            color: var(--blue);
+        }
+        .role-icon-small { margin-right: 6px; }
+
+        .member-list-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid #f8f8f8;
+        }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e6f7ff;
+            color: var(--blue);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            font-weight: bold;
+            margin-right: 12px;
+        }
+        /* 随机不同颜色的头像类 */
+        .avatar.c1 { background: #e6f7ff; color: #1677ff; }
+        .avatar.c2 { background: #f6ffed; color: #52c41a; }
+        .avatar.c3 { background: #fff7e6; color: #fa8c16; }
+
+        .member-info { flex: 1; }
+        .member-name { font-size: 16px; color: #333; margin-bottom: 2px; }
+        .member-id { font-size: 12px; color: #999; }
+
+        .bottom-btn-area {
+            padding: 16px;
+            background: #fff;
+            border-top: 1px solid #eee;
+            /* iPhone Bottom Safe Area */
+            padding-bottom: max(16px, env(safe-area-inset-bottom));
+        }
+        
+        .primary-btn {
+            background-color: var(--blue);
+            color: white;
+            border: none;
+            width: 100%;
+            height: 44px;
+            border-radius: 6px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .primary-btn:active { opacity: 0.9; }
+
+    </style>
+</head>
+<body>
+
+<div class="mobile-container">
+
+    <!-- PAGE 1: 角色组列表 -->
+    <div class="page active" id="page1">
+        <!-- 导航栏 -->
+        <div class="navbar">
+            <div class="nav-left">
+                <div class="back-icon"></div>
+            </div>
+            <div class="nav-title">角色</div>
+            <div class="capsule">
+                <div class="capsule-dot"></div>
+                <div class="capsule-line"></div>
+                <div class="capsule-circle"></div>
+            </div>
+        </div>
+
+        <!-- 搜索 -->
+        <div class="search-area">
+            <div class="search-input-wrapper">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" id="searchRoles" placeholder="搜索角色">
+            </div>
+        </div>
+
+        <!-- 列表内容 -->
+        <div class="content-scroll" id="roleListContainer">
+            <!-- 区域 1 -->
+            <div class="section-group">
+                <div class="section-title">同步的角色</div>
+                
+                <!-- 角色组 1 -->
+                <div class="role-group" data-group-name="跨部门角色">
+                    <div class="list-item group-trigger">
+                        <svg class="folder-icon" viewBox="0 0 1024 1024" width="24" height="24">
+                            <path d="M880 298.4H521L423.4 186.2c-1.5-1.7-3.6-2.6-5.8-2.6H144c-17.7 0-32 14.3-32 32v592.8c0 17.7 14.3 32 32 32H880c17.7 0 32-14.3 32-32V330.4c0-17.7-14.3-32-32-32z" fill="#FFC107"/>
+                        </svg>
+                        <span class="item-text">跨部门角色</span>
+                        <span class="arrow-icon">▶</span>
+                    </div>
+                    <div class="sub-list">
+                        <div class="role-item" data-role="项目经理">项目经理</div>
+                        <div class="role-item" data-role="技术顾问">技术顾问</div>
+                    </div>
+                </div>
+
+                <!-- 角色组 2 -->
+                <div class="role-group" data-group-name="公共支撑角色">
+                    <div class="list-item group-trigger">
+                        <svg class="folder-icon" viewBox="0 0 1024 1024" width="24" height="24">
+                            <path d="M880 298.4H521L423.4 186.2c-1.5-1.7-3.6-2.6-5.8-2.6H144c-17.7 0-32 14.3-32 32v592.8c0 17.7 14.3 32 32 32H880c17.7 0 32-14.3 32-32V330.4c0-17.7-14.3-32-32-32z" fill="#FFC107"/>
+                        </svg>
+                        <span class="item-text">公共支撑角色</span>
+                        <span class="arrow-icon">▶</span>
+                    </div>
+                    <div class="sub-list">
+                        <div class="role-item" data-role="HRBP">HRBP</div>
+                        <div class="role-item" data-role="行政专员">行政专员</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 区域 2 -->
+             <div class="section-group">
+                <div class="section-title">创建的角色</div>
+                
+                <!-- 角色组 3 -->
+                <div class="role-group" data-group-name="中级角色">
+                    <div class="list-item group-trigger">
+                         <svg class="folder-icon" viewBox="0 0 1024 1024" width="24" height="24">
+                            <path d="M880 298.4H521L423.4 186.2c-1.5-1.7-3.6-2.6-5.8-2.6H144c-17.7 0-32 14.3-32 32v592.8c0 17.7 14.3 32 32 32H880c17.7 0 32-14.3 32-32V330.4c0-17.7-14.3-32-32-32z" fill="#FFC107"/>
+                        </svg>
+                        <span class="item-text">中级角色</span>
+                        <span class="arrow-icon">▶</span>
+                    </div>
+                    <div class="sub-list">
+                        <div class="role-item" data-role="综合事务">综合事务</div>
+                        <div class="role-item" data-role="业务主管">业务主管</div>
+                    </div>
+                </div>
+                 <!-- 角色组 4 -->
+                <div class="role-group" data-group-name="初级角色">
+                    <div class="list-item group-trigger">
+                         <svg class="folder-icon" viewBox="0 0 1024 1024" width="24" height="24">
+                            <path d="M880 298.4H521L423.4 186.2c-1.5-1.7-3.6-2.6-5.8-2.6H144c-17.7 0-32 14.3-32 32v592.8c0 17.7 14.3 32 32 32H880c17.7 0 32-14.3 32-32V330.4c0-17.7-14.3-32-32-32z" fill="#FFC107"/>
+                        </svg>
+                        <span class="item-text">初级角色</span>
+                        <span class="arrow-icon">▶</span>
+                    </div>
+                    <div class="sub-list">
+                        <div class="role-item" data-role="实习生">实习生</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGE 2: 成员页面 -->
+    <div class="page hidden" id="page2">
+         <!-- 导航栏 -->
+        <div class="navbar">
+            <div class="nav-left" id="btnBack">
+                <div class="back-icon"></div>
+            </div>
+            <div class="nav-title" id="page2Title">综合事务</div>
+            <div class="capsule">
+                <div class="capsule-dot"></div>
+                <div class="capsule-line"></div>
+                <div class="capsule-circle"></div>
+            </div>
+        </div>
+
+        <div class="role-info-header">
+            <span class="role-icon-small">👤</span> 技术证书持有人
+        </div>
+
+        <!-- 搜索 -->
+        <div class="search-area">
+            <div class="search-input-wrapper">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" id="searchMembers" placeholder="搜索成员">
+            </div>
+        </div>
+
+        <!-- 成员列表 (动态内容) -->
+        <div class="content-scroll" id="memberList">
+            <!-- 示例数据 -->
+            <div class="member-list-item" data-name="李nico">
+                <div class="avatar c1">李</div>
+                <div class="member-info">
+                    <div class="member-name">李nico</div>
+                    <div class="member-id">nico</div>
+                </div>
+            </div>
+             <div class="member-list-item" data-name="刘nico">
+                <div class="avatar c2">刘</div>
+                <div class="member-info">
+                    <div class="member-name">刘nico</div>
+                    <div class="member-id">nico_liu</div>
+                </div>
+            </div>
+             <div class="member-list-item" data-name="王nico">
+                <div class="avatar c3">王</div>
+                <div class="member-info">
+                    <div class="member-name">王nico</div>
+                    <div class="member-id">nico_wang</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部按钮 -->
+        <div class="bottom-btn-area">
+            <button class="primary-btn">添加成员</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // 主要逻辑
+    document.addEventListener('DOMContentLoaded', () => {
+        const page1 = document.getElementById('page1');
+        const page2 = document.getElementById('page2');
+        const searchRoles = document.getElementById('searchRoles');
+        const searchMembers = document.getElementById('searchMembers');
+        const btnBack = document.getElementById('btnBack');
+        const page2Title = document.getElementById('page2Title');
+
+        // --- Page 1 逻辑 ---
+        
+        // 1. 文件夹折叠/展开
+        document.querySelectorAll('.group-trigger').forEach(trigger => {
+            trigger.addEventListener('click', (e) => {
+                const group = e.target.closest('.role-group');
+                group.classList.toggle('expanded');
+            });
+        });
+
+        // 2. 点击角色进入 Page 2
+        document.querySelectorAll('.role-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const roleName = e.target.getAttribute('data-role');
+                // 设置第二页标题
+                page2Title.innerText = roleName;
+                
+                // 模拟根据角色刷新成员列表 (这里仅仅是重置搜索状态)
+                resetPage2();
+
+                // 切换页面动画
+                page1.classList.remove('active');
+                page1.classList.add('hidden');
+                
+                // 稍微延迟一丢丢显示，让动画更顺畅
+                setTimeout(() => {
+                    page2.classList.remove('hidden');
+                    page2.classList.add('active');
+                }, 50);
+            });
+        });
+
+        // 3. Page 1 搜索逻辑
+        searchRoles.addEventListener('input', (e) => {
+            const keyword = e.target.value.trim().toLowerCase();
+            const groups = document.querySelectorAll('.role-group');
+
+            groups.forEach(group => {
+                const groupName = group.getAttribute('data-group-name').toLowerCase();
+                const items = group.querySelectorAll('.role-item');
+                let hasVisibleChild = false;
+
+                // 检查子项
+                items.forEach(item => {
+                    const itemName = item.getAttribute('data-role').toLowerCase();
+                    if (itemName.includes(keyword)) {
+                        item.classList.remove('hidden');
+                        hasVisibleChild = true;
+                    } else {
+                        item.classList.add('hidden');
+                    }
+                });
+
+                // 判断逻辑：
+                // 1. 如果搜素词为空 -> 显示所有，折叠起来
+                // 2. 如果子项匹配 -> 展开文件夹，显示父级
+                // 3. 如果父级名字匹配 -> 显示父级，展开子级，显示所有子级（或者只显示匹配的，这里策略是显示所有子级较好，但为了简单，我们让父级匹配时显式所有子级）
+                
+                if (keyword === '') {
+                    group.classList.remove('hidden');
+                    group.classList.remove('expanded'); // 恢复折叠
+                    items.forEach(i => i.classList.remove('hidden'));
+                    return;
+                }
+
+                if (groupName.includes(keyword)) {
+                    // 文件夹名字匹配
+                    group.classList.remove('hidden');
+                    group.classList.add('expanded');
+                    items.forEach(i => i.classList.remove('hidden'));
+                } else if (hasVisibleChild) {
+                    // 子项匹配
+                    group.classList.remove('hidden');
+                    group.classList.add('expanded');
+                } else {
+                    // 都不匹配
+                    group.classList.add('hidden');
+                }
+            });
+        });
+
+        // --- Page 2 逻辑 ---
+
+        // 返回按钮
+        btnBack.addEventListener('click', () => {
+            page2.classList.remove('active');
+            page2.classList.add('hidden');
+            
+            page1.classList.remove('hidden');
+            page1.classList.add('active');
+        });
+
+        // Page 2 搜索逻辑
+        searchMembers.addEventListener('input', (e) => {
+            const val = e.target.value.trim().toLowerCase();
+            const members = document.querySelectorAll('.member-list-item');
+            
+            members.forEach(m => {
+                const name = m.getAttribute('data-name').toLowerCase();
+                if (name.includes(val)) {
+                    m.classList.remove('hidden');
+                } else {
+                    m.classList.add('hidden');
+                }
+            });
+        });
+
+        function resetPage2() {
+            searchMembers.value = '';
+            document.querySelectorAll('.member-list-item').forEach(m => m.classList.remove('hidden'));
+        }
+
+    });
+</script>
+
+</body>
+</html>
