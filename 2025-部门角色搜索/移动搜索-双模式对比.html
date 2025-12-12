@@ -376,7 +376,7 @@
         <!-- 组织架构页面 -->
         <div class="page" id="orgPage">
             <div class="nav-bar">
-                <div class="nav-back" onclick="goBackFromOrg()">❮</div>
+                <div class="nav-back" onclick="goBack()">❮</div>
                 <div class="nav-title">组织架构</div>
                 <div class="nav-actions">•••</div>
             </div>
@@ -690,26 +690,18 @@
         // 如果不在组织架构页面，不处理
         if (currentPage !== 'org') return;
         
-        // 检查是否应该返回通讯录页面
-        // 如果栈中只有一个元素且是 root，无论是否有搜索关键词，都应该能返回通讯录
         const currentState = navigationStack[navigationStack.length - 1];
-        if (navigationStack.length === 1 && currentState.id === 'root') {
-            goBackFromOrg();
-            return;
-        }
         
         if (currentMode === 'parent') {
-            // 模式1：返回到父节点
+            // 模式1：返回到父节点（按照面包屑路径返回）
             const path = getPath(currentState.id);
             
             if (path && path.length > 1) {
+                // 有父节点，跳转到父节点
                 const parentNode = path[path.length - 2];
                 jumpToNodes(parentNode.id);
-            } else if (navigationStack.length > 1) {
-                navigationStack.pop();
-                render();
             } else {
-                // 如果已经在根节点，返回通讯录
+                // 已经在根节点（path.length <= 1），返回通讯录
                 goBackFromOrg();
             }
         } else {
