@@ -321,10 +321,13 @@
         .search-results-list .search-result-item .result-path {
             font-size: 12px !important;
             color: var(--text-light) !important;
-            white-space: nowrap !important;
+            white-space: nowrap !important; /* 单行显示 */
             overflow: hidden !important;
-            text-overflow: ellipsis !important;
+            text-overflow: ellipsis !important; /* 溢出省略 */
+            direction: rtl; /* 保留尾部，省略头部 */
+            unicode-bidi: plaintext;
             max-width: 100% !important;
+            line-height: 1.4;
         }
         
         .search-results-list .search-result-item.selected .result-path {
@@ -1802,6 +1805,44 @@
             buildPath(node);
             return path;
         }
+
+        // 将路径按“从后往前”并以“.../”开头的方式格式化
+        // 优先保证尾部完整展示，空间不足直接省略更前面的段，不做中间截断
+        function formatDisplayPath(segments, maxLength = 30) {
+            if (!segments || segments.length === 0) return '';
+            
+            const prefix = '.../';
+            const parts = [];
+            
+            // 先放入最底层（尾段），保证完整
+            const lastIndex = segments.length - 1;
+            const lastSeg = segments[lastIndex];
+            parts.unshift(lastSeg);
+            
+            let usedLength = prefix.length + lastSeg.length; // 已占用的长度（含前缀与尾段）
+            
+            // 如果尾段已经占满或超过长度，仍然保留尾段完整，只显示尾段
+            if (usedLength >= maxLength) {
+                return prefix + parts.join('/');
+            }
+            
+            // 继续从后往前拼接祖先，若空间不足则直接停止（省略更前的路径）
+            for (let i = lastIndex - 1; i >= 0; i--) {
+                const seg = segments[i];
+                const delimiterLength = 1; // “/”
+                const needLength = delimiterLength + seg.length;
+                
+                if (usedLength + needLength <= maxLength) {
+                    parts.unshift(seg);
+                    usedLength += needLength;
+                } else {
+                    // 空间不足，前面的路径整体省略
+                    break;
+                }
+            }
+            
+            return prefix + parts.join('/');
+        }
         
         // 创建搜索结果项（卡片样式）
         function createSearchResultItem(dept) {
@@ -1855,24 +1896,16 @@
             titleRow.appendChild(nodeNameContainer);
             contentContainer.appendChild(titleRow);
             
-            // 创建第二行：路径（从后往前显示3层）
+            // 创建第二行：路径（省略逻辑：以.../开头，尾部优先显示，超长内部省略）
             const pathRow = document.createElement('div');
             pathRow.className = 'result-path-row';
             
-            // 获取完整路径
+            // 仅取祖先路径，最后一级不包含自身
             const fullPath = getFullPathArray(dept);
+            const ancestorsOnly = fullPath.slice(0, -1);
+            const displayPath = formatDisplayPath(ancestorsOnly, 30);
             
-            if (fullPath.length > 0) {
-                // 从后往前取3层
-                const pathToShow = fullPath.slice(-3);
-                const pathText = pathToShow.join('/');
-                
-                // 如果完整路径超过3层，在开头显示省略号
-                let displayPath = pathText;
-                if (fullPath.length > 3) {
-                    displayPath = '.../' + pathText;
-                }
-                
+            if (displayPath) {
                 const pathSpan = document.createElement('span');
                 pathSpan.className = 'result-path';
                 pathSpan.textContent = `(${displayPath})`;
