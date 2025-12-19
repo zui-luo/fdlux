@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>B端部门树搜索原型</title>
+    <style>
+        /* 基础样式重置 */
+        :root {
+            --primary-color: #1677ff;
+            --hover-bg: #f5f5f5;
+            --border-color: #d9d9d9;
+            --text-color: #333;
+            --highlight-color: #ff4d4f;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; padding: 40px; background: #f0f2f5; }
+        
+        /* 容器样式 */
+        .tree-container {
+            width: 320px;
+            background: #fff;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #eee;
+            overflow-x: auto; /* 横向滚动 */
+        }
+
+        /* 搜索框样式 */
+        .search-box {
+            position: relative;
+            margin-bottom: 12px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 8px 12px 8px 30px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            outline: none;
+            box-sizing: border-box;
+            transition: all 0.3s;
+        }
+        .search-input:focus { border-color: var(--primary-color); box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.2); }
+        .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            font-size: 12px;
+        }
+
+        /* 树结构样式 */
+        .tree-root { 
+            list-style: none; 
+            padding-left: 0; 
+            margin: 0; 
+            width: max-content; /* 确保内容可以超出容器 */
+            min-width: 100%;
+        }
+        .tree-node { 
+            list-style: none; 
+            white-space: nowrap; /* 防止节点换行 */
+        }
+        .node-content {
+            display: flex;
+            align-items: center;
+            padding: 6px 8px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.2s;
+            color: var(--text-color);
+            white-space: nowrap; /* 防止内容换行 */
+            flex-shrink: 0; /* 防止收缩 */
+        }
+        .node-content:hover { background-color: var(--hover-bg); }
+        .node-content.selected { background-color: #e6f7ff; color: var(--primary-color); }
+        
+        /* 更多按钮样式 */
+        .more-btn {
+            margin-left: auto;
+            padding: 2px 8px;
+            font-size: 12px;
+            color: var(--primary-color);
+            background: transparent;
+            border: 1px solid var(--primary-color);
+            border-radius: 4px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+        .node-content:hover .more-btn {
+            opacity: 1;
+        }
+        .more-btn:hover {
+            background-color: var(--primary-color);
+            color: #fff;
+        }
+        
+        /* 展开箭头 */
+        .arrow {
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 4px;
+            cursor: pointer;
+            transform: rotate(-90deg);
+            transition: transform 0.2s;
+            color: #999;
+            font-size: 10px;
+        }
+        .arrow.expanded { transform: rotate(0deg); }
+        .arrow.hidden { visibility: hidden; } /* 叶子节点无箭头 */
+
+        /* 子列表缩进 */
+        .node-children {
+            padding-left: 24px;
+            display: none; /* 默认折叠 */
+            overflow: visible; /* 允许内容超出 */
+            white-space: nowrap; /* 防止子节点换行 */
+        }
+        .node-children.visible { display: block; }
+
+        /* 图标与文字 */
+        .folder-icon { margin-right: 6px; color: #faad14; flex-shrink: 0; }
+        .file-icon { margin-right: 6px; color: #8c8c8c; flex-shrink: 0; }
+        .node-text { white-space: nowrap; flex-shrink: 0; } /* 防止文本换行 */
+        .highlight { color: var(--primary-color); font-weight: bold; background: rgba(255, 255, 0, 0.2); }
+        
+        /* 空状态 */
+        .empty-state { text-align: center; color: #999; padding: 20px; display: none; font-size: 13px; }
+    </style>
+</head>
+<body>
+
+<div class="tree-container">
+    <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="search-input" id="searchInput" placeholder="搜索部门或人员...">
+    </div>
+    
+    <ul class="tree-root" id="treeRoot">
+        <!-- 树节点将通过JS生成 -->
+    </ul>
+    <div class="empty-state" id="emptyState">未找到相关结果</div>
+</div>
+
+<script>
+    // 1. 模拟 B端 组织架构数据 - 10层深度
+    // 部门名称库（8个字左右）
+    const deptNames = [
+        '集团总部管理中心', '战略规划发展部门', '人力资源管理部门', '财务审计核算中心',
+        '技术研发创新中心', '产品运营推广部门', '市场营销拓展中心', '客户服务支持部门',
+        '质量管控监督中心', '法务合规审查部门', '行政后勤保障中心', '信息安全管理中心',
+        '供应链管理运营中心', '品牌形象宣传推广部', '数据分析决策支持中心', '项目协调推进管理部门',
+        '风险控制评估监测中心', '投资并购战略规划部', '国际业务拓展发展中心', '数字化转型推进部门'
+    ];
+    
+    // 递归生成树节点
+    function createNode(id, level, maxLevel, nameIndex) {
+        const node = {
+            id: id,
+            title: deptNames[nameIndex % deptNames.length],
+            children: []
+        };
+        
+        if (level < maxLevel) {
+            // 每层生成2个子节点
+            for (let i = 1; i <= 2; i++) {
+                const childId = id * 10 + i;
+                const childNameIndex = (nameIndex * 2 + i) % deptNames.length;
+                node.children.push(createNode(childId, level + 1, maxLevel, childNameIndex));
+            }
+        }
+        
+        return node;
+    }
+    
+    const treeData = [
+        createNode(1, 1, 10, 0),
+        createNode(2, 1, 10, 5)
+    ];
+
+    const treeRoot = document.getElementById('treeRoot');
+    const emptyState = document.getElementById('emptyState');
+    let allNodeElements = []; // 存储所有DOM节点的引用以便操作
+
+    // 2. 渲染树函数 (递归)
+    function renderTree(data, parentElement) {
+        data.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'tree-node';
+            
+            const hasChildren = item.children && item.children.length > 0;
+            
+            // 构建节点内容
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'node-content';
+            contentDiv.dataset.id = item.id;
+            contentDiv.dataset.title = item.title; // 存储原始标题用于搜索匹配
+            
+            // 箭头
+            const arrow = document.createElement('span');
+            arrow.className = `arrow ${hasChildren ? '' : 'hidden'}`;
+            arrow.innerHTML = '▼';
+            
+            // 图标
+            const icon = document.createElement('span');
+            icon.className = hasChildren ? 'folder-icon' : 'file-icon';
+            icon.innerHTML = hasChildren ? '📁' : '👤'; // 简单Emoji代替图标
+
+            // 文本
+            const textSpan = document.createElement('span');
+            textSpan.className = 'node-text';
+            textSpan.innerText = item.title;
+
+            // 更多按钮
+            const moreBtn = document.createElement('button');
+            moreBtn.className = 'more-btn';
+            moreBtn.innerText = '更多';
+            moreBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // 阻止事件冒泡，避免触发展开/折叠
+                // 这里可以添加更多操作，比如显示菜单、弹窗等
+                console.log('点击更多按钮:', item.title);
+                alert(`点击了 "${item.title}" 的更多按钮`);
+            });
+
+            contentDiv.append(arrow, icon, textSpan, moreBtn);
+            li.appendChild(contentDiv);
+
+            // 点击展开/折叠逻辑
+            contentDiv.addEventListener('click', (e) => {
+                // 仅点击内容区域选中
+                document.querySelectorAll('.node-content').forEach(el => el.classList.remove('selected'));
+                contentDiv.classList.add('selected');
+                
+                // 点击箭头或者双击内容触发展开
+                if(hasChildren && (e.target === arrow || !e.target.classList.contains('arrow'))) {
+                   toggleNode(li);
+                }
+            });
+
+            // 递归子节点
+            if (hasChildren) {
+                const childUl = document.createElement('ul');
+                childUl.className = 'node-children';
+                renderTree(item.children, childUl);
+                li.appendChild(childUl);
+            }
+
+            parentElement.appendChild(li);
+            allNodeElements.push({ 
+                dom: li, 
+                text: item.title, 
+                contentDiv: contentDiv,
+                textSpan: textSpan,
+                hasChildren: hasChildren,
+                childrenUl: li.querySelector('.node-children'),
+                arrow: arrow
+            });
+        });
+    }
+
+    function toggleNode(liNode, forceState = null) {
+        const childrenUl = liNode.querySelector('.node-children');
+        const arrow = liNode.querySelector('.arrow');
+        if (!childrenUl) return;
+
+        const isVisible = childrenUl.classList.contains('visible');
+        const shouldShow = forceState !== null ? forceState : !isVisible;
+
+        if (shouldShow) {
+            childrenUl.classList.add('visible');
+            arrow.classList.add('expanded');
+        } else {
+            childrenUl.classList.remove('visible');
+            arrow.classList.remove('expanded');
+        }
+    }
+
+    // 3. 搜索逻辑核心 (Key Algorithm)
+    function filterTree(keyword) {
+        let hasResult = false;
+        
+        // 递归检查节点是否应该显示
+        // 返回值: boolean (是否包含匹配项或子节点包含匹配项)
+        function checkNodeVisibility(domData) {
+            const nodeText = domData.text.toLowerCase();
+            const searchKey = keyword.toLowerCase();
+            const isSelfMatch = nodeText.includes(searchKey);
+            
+            let isChildMatch = false;
+
+            // 如果有子节点，递归检查子节点
+            if (domData.hasChildren) {
+                // 找到该DOM下的所有直接子级li
+                const childLis = Array.from(domData.childrenUl.children);
+                childLis.forEach(childLi => {
+                    // 在allNodeElements中找到对应的对象 (此处为了Demo简单，通过遍历查找，实际项目可用Map优化)
+                    const childData = allNodeElements.find(n => n.dom === childLi);
+                    if (childData) {
+                       const childVisible = checkNodeVisibility(childData);
+                       if (childVisible) isChildMatch = true;
+                    }
+                });
+            }
+
+            // 决策显示逻辑
+            if (keyword === "") {
+                // 清空搜索时：显示所有，移除高亮，折叠
+                domData.dom.style.display = 'block';
+                domData.textSpan.innerHTML = domData.text;
+                if(domData.hasChildren) toggleNode(domData.dom, false); // 默认折叠
+                return true;
+            }
+
+            if (isSelfMatch || isChildMatch) {
+                domData.dom.style.display = 'block';
+                hasResult = true;
+                
+                // 1. 高亮处理
+                if (isSelfMatch) {
+                    const regex = new RegExp(`(${keyword})`, 'gi');
+                    domData.textSpan.innerHTML = domData.text.replace(regex, '<span class="highlight">$1</span>');
+                } else {
+                    domData.textSpan.innerHTML = domData.text;
+                }
+
+                // 2. 自动展开：如果是子节点匹配，父亲必须展开
+                if (isChildMatch && domData.hasChildren) {
+                    toggleNode(domData.dom, true);
+                }
+                
+                return true;
+            } else {
+                domData.dom.style.display = 'none';
+                return false;
+            }
+        }
+
+        // 执行遍历
+        // 只有顶级节点需要触发递归入口，这里我们需要对所有存入的节点做处理，
+        // 但为了保证层级逻辑，我们实际上只需对顶级DOM进行遍历，或者利用checkNodeVisibility内部逻辑。
+        // 在Flat数据结构下很难办，所以我们重新遍历顶层li。
+        const rootLis = Array.from(document.getElementById('treeRoot').children);
+        rootLis.forEach(rootLi => {
+             const rootData = allNodeElements.find(n => n.dom === rootLi);
+             checkNodeVisibility(rootData);
+        });
+
+        // 空状态控制
+        emptyState.style.display = (hasResult || keyword === "") ? 'none' : 'block';
+    }
+
+    // 初始化
+    renderTree(treeData, treeRoot);
+
+    // 绑定搜索事件
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+        filterTree(e.target.value.trim());
+    });
+
+</script>
+</body>
+</html>
