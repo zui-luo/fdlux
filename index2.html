@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FDL交互原型中心</title>
+    <style>
+        /* --- CSS 变量定义 (参考FineDataLink配色逻辑) --- */
+        :root {
+            --primary-color: #1677FF; /* B端经典蓝 */
+            --primary-hover: #4096ff;
+            --primary-light: #E6F4FF; /* 主色浅色背景 */
+            --text-main: #1F2329;     /* 主要文字颜色 */
+            --text-secondary: #86909C; /* 次要文字 */
+            --text-tertiary: #C9CDD4; /* 三级文字 */
+            --bg-body: #FAFBFC;       /* 页面背景灰（更浅） */
+            --bg-white: #FFFFFF;
+            --bg-card: #FFFFFF;
+            --border-color: #E5E6EB;
+            --border-light: #F2F3F5;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 8px 24px rgba(22, 119, 255, 0.12);
+            --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
+            --radius-md: 6px;
+            --radius-lg: 10px;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        }
+
+        /* --- 全局重置 --- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        a { text-decoration: none; color: inherit; }
+        a.card-link { 
+            display: block;
+            animation: fadeInUp 0.6s ease-out backwards;
+        }
+        a.card-link:nth-child(1) { animation-delay: 0.1s; }
+        a.card-link:nth-child(2) { animation-delay: 0.2s; }
+        a.card-link:nth-child(3) { animation-delay: 0.3s; }
+        a.card-link:nth-child(4) { animation-delay: 0.4s; }
+        ul { list-style: none; }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* --- 官网主页布局 --- */
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 32px;
+            position: relative;
+            z-index: 2;
+        }
+
+        main {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Hero区域 */
+        .hero-section {
+            text-align: center;
+            padding: 80px 0 60px;
+            position: relative;
+            background: transparent;
+        }
+
+        .hero-title {
+            font-size: 42px;
+            font-weight: 600;
+            line-height: 1.3;
+            margin-bottom: 20px;
+            color: var(--text-main);
+            animation: fadeInUp 0.8s ease-out;
+            letter-spacing: -0.5px;
+        }
+
+        .hero-subtitle {
+            font-size: 16px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            margin-bottom: 0;
+            max-width: 580px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+            animation: fadeInUp 0.8s ease-out 0.2s backwards;
+        }
+
+        /* 原型展示区域 */
+        .prototypes-section {
+            padding: 40px 0 100px;
+            position: relative;
+            background: transparent;
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-body);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-tertiary);
+        }
+
+        /* 网格布局 */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin: 0 auto;
+            max-width: 1200px;
+        }
+
+        /* --- 卡片组件核心样式 - 官网简洁风格 --- */
+        .card {
+            background: var(--bg-white);
+            border: none;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-card);
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        /* 卡片预览区 */
+        .card-preview {
+            height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            background: var(--primary-light);
+        }
+
+        .card-icon {
+            font-size: 56px;
+            opacity: 0.9;
+            transition: all 0.3s ease;
+            z-index: 1;
+        }
+
+        .card:hover .card-icon {
+            transform: scale(1.1);
+            opacity: 1;
+        }
+
+        /* 卡片内容区 */
+        .card-body {
+            padding: 18px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-white);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            line-height: 1.5;
+            color: var(--text-main);
+            transition: color 0.3s ease;
+            letter-spacing: -0.2px;
+        }
+
+        .card:hover .card-title {
+            color: var(--primary-color);
+        }
+
+        .card-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            line-height: 1.6;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-footer {
+            margin-top: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--border-light);
+            padding-top: 12px;
+        }
+
+        .meta-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .version-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            background: var(--bg-body);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover .version-badge {
+            background: var(--primary-light);
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+        
+        /* 状态样式 */
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .status-wip { 
+            background-color: #FAAD14;
+        } /* 进行中 - 黄色 */
+        .status-done { 
+            background-color: #52C41A;
+        } /* 已完成 - 绿色 */
+        .status-review { 
+            background-color: var(--primary-color);
+        } /* 评审中 - 蓝色 */
+
+        .avatar {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-color);
+            font-size: 10px;
+            font-weight: 500;
+            transition: transform 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .card:hover .avatar {
+            transform: scale(1.05);
+            background: var(--primary-color);
+            color: var(--bg-white);
+            border-color: var(--primary-color);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 20px;
+            }
+
+            .hero-title {
+                font-size: 32px;
+            }
+
+            .hero-subtitle {
+                font-size: 15px;
+                padding: 0;
+            }
+
+            .grid-container {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .hero-section {
+                padding: 60px 0 40px;
+            }
+
+            .prototypes-section {
+                padding: 30px 0 80px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero-title {
+                font-size: 26px;
+                margin-bottom: 16px;
+            }
+
+            .hero-subtitle {
+                font-size: 14px;
+            }
+
+            .hero-section {
+                padding: 50px 0 30px;
+            }
+
+            .prototypes-section {
+                padding: 20px 0 60px;
+            }
+
+            .card-preview {
+                height: 160px;
+            }
+
+            .card-icon {
+                font-size: 48px;
+            }
+        }
+
+        /* --- 上传功能样式 --- */
+        .upload-btn {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            cursor: pointer;
+            box-shadow: var(--shadow-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .upload-btn:hover {
+            background: var(--primary-hover);
+            transform: scale(1.1);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .upload-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .upload-modal.active {
+            display: flex;
+        }
+
+        .upload-modal-content {
+            background: var(--bg-white);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-md);
+            animation: fadeInUp 0.3s ease-out;
+        }
+
+        .upload-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .upload-modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .upload-modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-md);
+            transition: all 0.2s ease;
+        }
+
+        .upload-modal-close:hover {
+            background: var(--bg-body);
+            color: var(--text-main);
+        }
+
+        .upload-form-group {
+            margin-bottom: 20px;
+        }
+
+        .upload-form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .upload-form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-family: var(--font-family);
+            transition: all 0.2s ease;
+        }
+
+        .upload-form-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px var(--primary-light);
+        }
+
+        .upload-file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .upload-file-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--bg-body);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .upload-file-input:hover {
+            border-color: var(--primary-color);
+            background: var(--primary-light);
+        }
+
+        .upload-file-input input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .upload-file-name {
+            margin-top: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .upload-form-textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-family: var(--font-family);
+            resize: vertical;
+            min-height: 80px;
+            transition: all 0.2s ease;
+        }
+
+        .upload-form-textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px var(--primary-light);
+        }
+
+        .upload-form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .upload-btn-primary {
+            flex: 1;
+            padding: 12px 24px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .upload-btn-primary:hover:not(:disabled) {
+            background: var(--primary-hover);
+        }
+
+        .upload-btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .upload-btn-secondary {
+            padding: 12px 24px;
+            background: var(--bg-body);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .upload-btn-secondary:hover {
+            background: var(--border-light);
+        }
+
+        .upload-status {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            display: none;
+        }
+
+        .upload-status.success {
+            background: #F6FFED;
+            border: 1px solid #B7EB8F;
+            color: #52C41A;
+            display: block;
+        }
+
+        .upload-status.error {
+            background: #FFF2E8;
+            border: 1px solid #FFD591;
+            color: #FA8C16;
+            display: block;
+        }
+
+        .upload-status.loading {
+            background: var(--primary-light);
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            display: block;
+        }
+
+        .upload-token-input {
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .upload-btn {
+                bottom: 20px;
+                right: 20px;
+                width: 48px;
+                height: 48px;
+                font-size: 20px;
+            }
+
+            .upload-modal-content {
+                padding: 24px;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- 主要内容区域 -->
+    <main>
+        <!-- Hero区域 -->
+        <section class="hero-section">
+            <div class="container">
+                <h1 class="hero-title">交互原型展示中心</h1>
+                <p class="hero-subtitle">探索我们的设计作品，体验精心打造的交互原型，感受前沿的设计理念与用户体验</p>
+            </div>
+        </section>
+
+        <!-- 原型展示区域 -->
+        <section class="prototypes-section">
+            <div class="container">
+                <div class="grid-container" id="prototypesGrid">
+                    <!-- 卡片将通过 JavaScript 动态生成 -->
+                    <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                        正在加载原型列表...
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 上传按钮 -->
+    <button class="upload-btn" onclick="openUploadModal()" title="上传新原型">
+        ➕
+    </button>
+
+    <!-- 上传模态框 -->
+    <div class="upload-modal" id="uploadModal">
+        <div class="upload-modal-content">
+            <div class="upload-modal-header">
+                <h2 class="upload-modal-title">上传新原型</h2>
+                <button class="upload-modal-close" onclick="closeUploadModal()">×</button>
+            </div>
+
+            <form id="uploadForm" onsubmit="handleUpload(event)">
+                <!-- GitHub Token 输入 -->
+                <div class="upload-form-group">
+                    <label class="upload-form-label">
+                        GitHub Personal Access Token
+                        <span style="color: var(--text-tertiary); font-size: 12px; font-weight: normal;">
+                            (需要 repo 权限)
+                        </span>
+                    </label>
+                    <input 
+                        type="password" 
+                        class="upload-form-input upload-token-input" 
+                        id="githubToken"
+                        placeholder="ghp_xxxxxxxxxxxx"
+                        required
+                    />
+                    <div style="margin-top: 4px; font-size: 12px; color: var(--text-secondary);">
+                        <a href="https://github.com/settings/tokens" target="_blank" style="color: var(--primary-color);">
+                            获取 Token →
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 卡片标题 -->
+                <div class="upload-form-group">
+                    <label class="upload-form-label">卡片标题 *</label>
+                    <input 
+                        type="text" 
+                        class="upload-form-input" 
+                        id="cardTitle"
+                        placeholder="例如: 2025-新功能原型"
+                        required
+                    />
+                </div>
+
+                <!-- 卡片描述 -->
+                <div class="upload-form-group">
+                    <label class="upload-form-label">卡片描述 *</label>
+                    <textarea 
+                        class="upload-form-textarea" 
+                        id="cardDescription"
+                        placeholder="简要描述这个原型的功能和特点..."
+                        required
+                    ></textarea>
+                </div>
+
+                <!-- 文件路径 -->
+                <div class="upload-form-group">
+                    <label class="upload-form-label">文件路径 *</label>
+                    <input 
+                        type="text" 
+                        class="upload-form-input" 
+                        id="filePath"
+                        placeholder="例如: 草稿/新原型.html"
+                        required
+                    />
+                    <div style="margin-top: 4px; font-size: 12px; color: var(--text-secondary);">
+                        文件将保存到此路径
+                    </div>
+                </div>
+
+                <!-- 图标选择 -->
+                <div class="upload-form-group">
+                    <label class="upload-form-label">图标</label>
+                    <input 
+                        type="text" 
+                        class="upload-form-input" 
+                        id="cardIcon"
+                        placeholder="例如: 📋 ⚡ 🔍 📱 🎨"
+                        value="📄"
+                        maxlength="2"
+                    />
+                    <div style="margin-top: 4px; font-size: 12px; color: var(--text-secondary);">
+                        输入一个 emoji 图标（可选）
+                    </div>
+                </div>
+
+                <!-- 状态选择 -->
+                <div class="upload-form-group">
+                    <label class="upload-form-label">状态</label>
+                    <select class="upload-form-input" id="cardStatus">
+                        <option value="wip">进行中</option>
+                        <option value="review">评审中</option>
+                        <option value="done">已完成</option>
+                    </select>
+                </div>
+
+                <!-- 版本号 -->
+                <div class="upload-form-group">
+                    <label class="upload-form-label">版本号</label>
+                    <input 
+                        type="text" 
+                        class="upload-form-input" 
+                        id="cardVersion"
+                        placeholder="例如: v1.0"
+                        value="v1.0"
+                    />
+                </div>
+
+                <!-- 文件选择 -->
+                <div class="upload-form-group">
+                    <label class="upload-form-label">选择文件</label>
+                    <div class="upload-file-input-wrapper">
+                        <div class="upload-file-input">
+                            <input type="file" id="fileInput" accept=".html,.htm" required />
+                            <span id="fileInputText">点击选择 HTML 文件或拖拽文件到此处</span>
+                        </div>
+                    </div>
+                    <div class="upload-file-name" id="fileName"></div>
+                </div>
+
+                <!-- 提交信息 -->
+                <div class="upload-form-group">
+                    <label class="upload-form-label">提交信息（可选）</label>
+                    <textarea 
+                        class="upload-form-textarea" 
+                        id="commitMessage"
+                        placeholder="描述此次上传的内容..."
+                    ></textarea>
+                </div>
+
+                <!-- 状态提示 -->
+                <div class="upload-status" id="uploadStatus"></div>
+
+                <!-- 操作按钮 -->
+                <div class="upload-form-actions">
+                    <button type="button" class="upload-btn-secondary" onclick="closeUploadModal()">
+                        取消
+                    </button>
+                    <button type="submit" class="upload-btn-primary" id="submitBtn">
+                        上传
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // GitHub 仓库配置
+        const GITHUB_REPO = {
+            owner: 'zui-luo',
+            repo: 'fdlux',
+            branch: 'main'
+        };
+
+        // 打开上传模态框
+        function openUploadModal() {
+            document.getElementById('uploadModal').classList.add('active');
+            // 检查是否有保存的 token
+            const savedToken = localStorage.getItem('github_token');
+            if (savedToken) {
+                document.getElementById('githubToken').value = savedToken;
+            }
+        }
+
+        // 关闭上传模态框
+        function closeUploadModal() {
+            document.getElementById('uploadModal').classList.remove('active');
+            document.getElementById('uploadForm').reset();
+            document.getElementById('fileName').textContent = '';
+            document.getElementById('uploadStatus').className = 'upload-status';
+            document.getElementById('uploadStatus').textContent = '';
+        }
+
+        // 点击模态框背景关闭
+        document.getElementById('uploadModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeUploadModal();
+            }
+        });
+
+        // 文件选择处理
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('fileName').textContent = `已选择: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+            }
+        });
+
+        // 拖拽上传
+        const fileInputWrapper = document.querySelector('.upload-file-input-wrapper');
+        fileInputWrapper.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.querySelector('.upload-file-input').style.borderColor = 'var(--primary-color)';
+        });
+
+        fileInputWrapper.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.querySelector('.upload-file-input').style.borderColor = 'var(--border-color)';
+        });
+
+        fileInputWrapper.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.querySelector('.upload-file-input').style.borderColor = 'var(--border-color)';
+            
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.html')) {
+                document.getElementById('fileInput').files = e.dataTransfer.files;
+                document.getElementById('fileName').textContent = `已选择: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+            } else {
+                showStatus('请选择 HTML 文件', 'error');
+            }
+        });
+
+        // 显示状态
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('uploadStatus');
+            statusEl.textContent = message;
+            statusEl.className = `upload-status ${type}`;
+        }
+
+        // 处理上传
+        async function handleUpload(event) {
+            event.preventDefault();
+
+            const token = document.getElementById('githubToken').value.trim();
+            const filePath = document.getElementById('filePath').value.trim();
+            const fileInput = document.getElementById('fileInput');
+            const commitMessage = document.getElementById('commitMessage').value.trim() || '上传新原型文件';
+            const submitBtn = document.getElementById('submitBtn');
+
+            // 获取卡片信息
+            const cardTitle = document.getElementById('cardTitle').value.trim();
+            const cardDescription = document.getElementById('cardDescription').value.trim();
+            const cardIcon = document.getElementById('cardIcon').value.trim() || '📄';
+            const cardStatus = document.getElementById('cardStatus').value;
+            const cardVersion = document.getElementById('cardVersion').value.trim() || 'v1.0';
+
+            if (!fileInput.files[0]) {
+                showStatus('请选择要上传的文件', 'error');
+                return;
+            }
+
+            if (!cardTitle || !cardDescription) {
+                showStatus('请填写卡片标题和描述', 'error');
+                return;
+            }
+
+            // 保存 token 到本地存储
+            localStorage.setItem('github_token', token);
+
+            // 禁用提交按钮
+            submitBtn.disabled = true;
+            submitBtn.textContent = '上传中...';
+            showStatus('正在上传文件...', 'loading');
+
+            try {
+                const file = fileInput.files[0];
+                const fileContent = await readFileAsBase64(file);
+
+                // 获取文件 SHA（如果文件已存在）
+                let fileSha = null;
+                try {
+                    const existingFile = await getFileContent(token, filePath);
+                    fileSha = existingFile.sha;
+                } catch (e) {
+                    // 文件不存在，继续上传
+                }
+
+                // 上传文件到 GitHub
+                await uploadFileToGitHub(
+                    token,
+                    filePath,
+                    fileContent,
+                    commitMessage,
+                    fileSha
+                );
+
+                // 更新 prototypes.json
+                await updatePrototypesJson(
+                    token,
+                    {
+                        title: cardTitle,
+                        description: cardDescription,
+                        path: filePath,
+                        icon: cardIcon,
+                        status: cardStatus,
+                        version: cardVersion,
+                        date: new Date().toISOString().split('T')[0],
+                        author: 'N'
+                    }
+                );
+
+                showStatus(`上传成功！文件已保存，卡片已添加到主页`, 'success');
+                
+                // 立即添加新卡片到页面（不等待 GitHub 更新）
+                const newCard = {
+                    id: String(Date.now()),
+                    title: cardTitle,
+                    description: cardDescription,
+                    path: filePath,
+                    icon: cardIcon,
+                    status: cardStatus,
+                    version: cardVersion,
+                    date: new Date().toISOString().split('T')[0],
+                    author: 'N'
+                };
+                
+                // 直接添加到页面最前面
+                const grid = document.getElementById('prototypesGrid');
+                const card = createPrototypeCard(newCard, 0);
+                grid.insertBefore(card, grid.firstChild);
+                
+                // 3秒后关闭模态框，并重新从 GitHub 加载最新数据
+                setTimeout(async () => {
+                    closeUploadModal();
+                    // 强制从 GitHub 加载最新数据（带时间戳避免缓存）
+                    await loadPrototypesFromGitHub(true);
+                }, 2000);
+
+            } catch (error) {
+                console.error('上传失败:', error);
+                let errorMessage = '上传失败: ';
+                if (error.message) {
+                    errorMessage += error.message;
+                } else if (error.response) {
+                    const errorData = await error.response.json();
+                    errorMessage += errorData.message || '未知错误';
+                } else {
+                    errorMessage += '网络错误或权限不足';
+                }
+                showStatus(errorMessage, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '上传';
+            }
+        }
+
+        // 读取文件为 Base64
+        function readFileAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    // 移除 data URL 前缀，只保留 base64 内容
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // 获取文件内容（用于获取 SHA）
+        async function getFileContent(token, path) {
+            const url = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${encodeURIComponent(path)}`;
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+
+            if (!response.ok && response.status !== 404) {
+                throw new Error(`获取文件信息失败: ${response.statusText}`);
+            }
+
+            if (response.status === 404) {
+                return null;
+            }
+
+            return await response.json();
+        }
+
+        // 上传文件到 GitHub
+        async function uploadFileToGitHub(token, path, content, message, sha = null) {
+            const url = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/contents/${encodeURIComponent(path)}`;
+            
+            const body = {
+                message: message,
+                content: content,
+                branch: GITHUB_REPO.branch
+            };
+
+            // 如果文件已存在，需要提供 SHA
+            if (sha) {
+                body.sha = sha;
+            }
+
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `上传失败: ${response.statusText}`);
+            }
+
+            return await response.json();
+        }
+
+        // 更新 prototypes.json
+        async function updatePrototypesJson(token, newCard) {
+            try {
+                // 获取现有的 prototypes.json
+                let prototypes = [];
+                try {
+                    const existingJson = await getFileContent(token, 'prototypes.json');
+                    const jsonContent = atob(existingJson.content.replace(/\s/g, ''));
+                    prototypes = JSON.parse(jsonContent);
+                } catch (e) {
+                    // 文件不存在，使用空数组
+                    prototypes = [];
+                }
+
+                // 生成新卡片的 ID
+                const newId = prototypes.length > 0 
+                    ? String(Math.max(...prototypes.map(p => parseInt(p.id) || 0)) + 1)
+                    : '1';
+
+                // 添加新卡片到数组开头（最新显示在最前面）
+                prototypes.unshift({
+                    id: newId,
+                    ...newCard
+                });
+
+                // 转换为 JSON 并上传
+                const jsonContent = JSON.stringify(prototypes, null, 2);
+                const jsonBase64 = btoa(unescape(encodeURIComponent(jsonContent)));
+
+                // 获取 prototypes.json 的 SHA
+                let jsonSha = null;
+                try {
+                    const existingJson = await getFileContent(token, 'prototypes.json');
+                    jsonSha = existingJson.sha;
+                } catch (e) {
+                    // 文件不存在
+                }
+
+                // 上传更新后的 JSON
+                await uploadFileToGitHub(
+                    token,
+                    'prototypes.json',
+                    jsonBase64,
+                    `添加新原型卡片: ${newCard.title}`,
+                    jsonSha
+                );
+            } catch (error) {
+                console.error('更新 prototypes.json 失败:', error);
+                throw new Error('文件上传成功，但更新卡片列表失败: ' + error.message);
+            }
+        }
+
+        // 默认卡片数据（作为后备）
+        const defaultPrototypes = [
+            {
+                id: "1",
+                title: "2025-逻辑表",
+                description: "逻辑表结构设计与管理界面，包含表字段配置、关系映射与数据模型可视化的交互设计。",
+                path: "2025-逻辑表/【C】完整原型.html",
+                icon: "📋",
+                status: "wip",
+                version: "v1.0",
+                date: "2025-12-05",
+                author: "N"
+            },
+            {
+                id: "2",
+                title: "2025-数据服务优化",
+                description: "数据服务性能优化方案，包含接口响应时间监控、缓存策略配置与查询优化建议的交互界面。",
+                path: "2025-数据服务优化/数据服务.html",
+                icon: "⚡",
+                status: "review",
+                version: "v1.0",
+                date: "2025-12-05",
+                author: "N"
+            },
+            {
+                id: "3",
+                title: "2025-部门角色搜索",
+                description: "部门与角色搜索功能设计，包含智能搜索、筛选器配置与结果展示的交互界面。",
+                path: "2025-部门角色搜索/new.html",
+                icon: "🔍",
+                status: "wip",
+                version: "v3.0",
+                date: "2025-12-15",
+                author: "N"
+            },
+            {
+                id: "4",
+                title: "2025-部门搜索移动端",
+                description: "移动端部门搜索交互设计，包含通讯录页面、组织架构浏览与两种返回模式（返回上一层/返回=回退）的对比方案。",
+                path: "2025-部门角色搜索/移动搜索-双模式对比.html",
+                icon: "📱",
+                status: "done",
+                version: "v2.0",
+                date: "2025-12-12",
+                author: "N"
+            }
+        ];
+
+        // 从 GitHub 加载原型列表（带缓存控制）
+        async function loadPrototypesFromGitHub(forceRefresh = false) {
+            const grid = document.getElementById('prototypesGrid');
+            let prototypes = null;
+            
+            try {
+                // 如果强制刷新，添加时间戳避免缓存
+                const url = forceRefresh 
+                    ? `https://raw.githubusercontent.com/zui-luo/fdlux/main/prototypes.json?t=${Date.now()}`
+                    : 'https://raw.githubusercontent.com/zui-luo/fdlux/main/prototypes.json';
+                
+                const githubResponse = await fetch(url);
+                if (githubResponse.ok) {
+                    prototypes = await githubResponse.json();
+                    console.log('从 GitHub 加载成功');
+                }
+            } catch (e) {
+                console.log('GitHub 加载失败:', e);
+            }
+            
+            return prototypes;
+        }
+
+        // 加载并渲染卡片
+        async function loadPrototypes() {
+            const grid = document.getElementById('prototypesGrid');
+            let prototypes = null;
+            
+            // 方法1: 优先从 GitHub 加载（最新数据）
+            prototypes = await loadPrototypesFromGitHub();
+            
+            // 方法2: 如果 GitHub 加载失败，尝试从本地加载
+            if (!prototypes) {
+                try {
+                    const localResponse = await fetch('./prototypes.json');
+                    if (localResponse.ok) {
+                        prototypes = await localResponse.json();
+                        console.log('从本地加载成功');
+                    }
+                } catch (e) {
+                    console.log('本地加载失败');
+                }
+            }
+
+            // 方法3: 如果都失败，使用默认数据
+            if (!prototypes || prototypes.length === 0) {
+                prototypes = defaultPrototypes;
+                console.log('使用默认卡片数据');
+            }
+            
+            // 清空加载提示
+            grid.innerHTML = '';
+
+            // 渲染每个卡片
+            prototypes.forEach((prototype, index) => {
+                const card = createPrototypeCard(prototype, index);
+                grid.appendChild(card);
+            });
+        }
+
+        // 创建原型卡片元素
+        function createPrototypeCard(prototype, index) {
+            const link = document.createElement('a');
+            link.href = prototype.path;
+            link.className = 'card-link';
+            link.style.animationDelay = `${(index + 1) * 0.1}s`;
+
+            const statusClass = {
+                'wip': 'status-wip',
+                'review': 'status-review',
+                'done': 'status-done'
+            }[prototype.status] || 'status-wip';
+
+            const statusTitle = {
+                'wip': '进行中',
+                'review': '评审中',
+                'done': '已完成'
+            }[prototype.status] || '进行中';
+
+            link.innerHTML = `
+                <div class="card">
+                    <div class="card-preview">
+                        <span class="card-icon">${prototype.icon || '📄'}</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-header">
+                            <div class="card-title">${prototype.title}</div>
+                        </div>
+                        <div class="card-desc">${prototype.description}</div>
+                        <div class="card-footer">
+                            <div class="meta-info">
+                                <span class="status-dot ${statusClass}" title="${statusTitle}"></span>
+                                <span class="version-badge">${prototype.version || 'v1.0'}</span>
+                            </div>
+                            <div class="meta-info">
+                                <span>${prototype.date || new Date().toISOString().split('T')[0]}</span>
+                                <div class="avatar">${prototype.author || 'N'}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            return link;
+        }
+
+        // 页面加载时加载原型列表
+        document.addEventListener('DOMContentLoaded', loadPrototypes);
+    </script>
+</body>
+</html>
