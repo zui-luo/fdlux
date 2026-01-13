@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>童趣圣诞树生成器</title>
+    <!-- 引入 Rough.js 库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/rough.js/3.1.0/rough.js"></script>
+    <style>
+        /* 1. 全局样式：设置纸张背景和手写字体 */
+        :root {
+            --paper-color: #f7f5e6;
+            --btn-color: #e76f51;
+            --text-color: #264653;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--paper-color);
+            /* 字体回退机制，确保手写感 */
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', sans-serif;
+        }
+
+        /* 2. 背景噪点纹理：模拟画纸粗糙感 */
+        .paper-texture {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.4;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            z-index: 1;
+        }
+
+        /* 3. 主容器 */
+        #app {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+        }
+
+        /* 画布样式 */
+        canvas {
+            max-width: 100%;
+            max-height: 80vh;
+        }
+
+        /* 4. 手绘风格按钮 */
+        .control-panel {
+            position: absolute;
+            bottom: 40px;
+            text-align: center;
+        }
+
+        .draw-btn {
+            background: transparent;
+            font-family: inherit;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--text-color);
+            padding: 12px 36px;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            position: relative;
+            transition: transform 0.1s ease;
+        }
+
+        /* 使用 SVG 背景或 border-image 也可以，这里为了纯代码实现，使用 CSS 模拟手绘边框 */
+        .draw-btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 3px solid var(--text-color);
+            /* 这个 border-radius 技巧能产生不规则的椭圆效果 */
+            border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+            transform: rotate(-2deg);
+            background-color: #fff;
+            z-index: -1;
+            transition: all 0.2s ease;
+            box-shadow: 2px 4px 0px rgba(0,0,0,0.1);
+        }
+        
+        .draw-btn:hover {
+            transform: scale(1.05) rotate(1deg);
+        }
+
+        .draw-btn:hover::before {
+            background-color: #ffe8d6;
+            transform: rotate(1deg);
+        }
+
+        .draw-btn:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="paper-texture"></div>
+
+    <div id="app">
+        <!-- 画布区域 -->
+        <canvas id="canvas"></canvas>
+        
+        <!-- 底部按钮 -->
+        <div class="control-panel">
+            <button class="draw-btn" id="generateBtn">我的圣诞树 🎄</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. 配置与初始化 ---
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        // 初始化 Rough.js
+        let rc = rough.canvas(canvas);
+
+        // 颜色板：高饱和度、复古感、蜡笔风
+        const pallete = {
+            greens: ['#2d6a4f', '#40916c', '#52b788', '#008000', '#556b2f'],
+            trunks: ['#582f0e', '#7f5539', '#9c6644'],
+            decorations: ['#e76f51', '#f4a261', '#e9c46a', '#2a9d8f', '#e63946', '#ffd700'],
+            snow: ['#a8dadc', '#f1faee', '#cccccc']
+        };
+
+        // 随机工具函数
+        const random = (min, max) => Math.random() * (max - min) + min;
+        const randomInt = (min, max) => Math.floor(random(min, max));
+        const randomPick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+        // --- 2. 核心绘画逻辑 ---
+
+        // 设置画布尺寸
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            generateTree();
+        }
+
+        // 绘制不规则多边形（模拟手绘的树层）
+        function drawRoughPolygon(points, color, fillStyle = 'hachure') {
+            rc.polygon(points, {
+                fill: color,
+                fillStyle: fillStyle, // hachure, zigzag, cross-hatch, dots
+                fillWeight: random(1, 2.5), // 填充线条的粗细
+                hachureGap: random(3, 6), // 填充线条的间距，大一点像涂要把不满
+                roughness: 2.5, // 粗糙度：值越大越凌乱
+                bowing: 1.5, // 弯曲度：线条是弯的而不是直的
+                stroke: '#1a1a1a', // 轮廓颜色（深铅笔色）
+                strokeWidth: 1.5
+            });
+        }
+
+        // 绘制装饰物 (圆球)
+        function drawBauble(x, y) {
+            const size = random(10, 20);
+            const color = randomPick(pallete.decorations);
+            const style = randomPick(['solid', 'hachure', 'zigzag']);
+            
+            rc.circle(x, y, size, {
+                fill: color,
+                fillStyle: style,
+                roughness: 2,
+                fillWeight: 1.5,
+                hachureGap: 3,
+                stroke: '#1a1a1a',
+                strokeWidth: 1
+            });
+        }
+
+        // 绘制顶部星星 (简易的不规则图案)
+        function drawStar(cx, cy, outerRadius, innerRadius) {
+            let rot = Math.PI / 2 * 3;
+            let x = cx;
+            let y = cy;
+            let step = Math.PI / 5;
+            let points = [];
+
+            // 生成五角星的坐标点，并加入随机偏移
+            for (let i = 0; i < 5; i++) {
+                x = cx + Math.cos(rot) * outerRadius + random(-5, 5);
+                y = cy + Math.sin(rot) * outerRadius + random(-5, 5);
+                points.push([x, y]);
+                rot += step;
+
+                x = cx + Math.cos(rot) * innerRadius + random(-5, 5);
+                y = cy + Math.sin(rot) * innerRadius + random(-5, 5);
+                points.push([x, y]);
+                rot += step;
+            }
+            
+            rc.polygon(points, {
+                fill: '#ffd700',
+                fillStyle: 'zigzag',
+                fillWeight: 2,
+                hachureGap: 3,
+                roughness: 2,
+                stroke: '#e63946', // 星星描边给个红色，显眼
+                strokeWidth: 2
+            });
+        }
+
+        // 绘制背景元素（雪花/圆点）
+        function drawBackground() {
+            const count = 30;
+            for(let i=0; i<count; i++) {
+                const x = random(0, canvas.width);
+                const y = random(0, canvas.height);
+                const size = random(5, 15);
+                const type = randomInt(0, 3); // 0: circle, 1: line, 2: cross
+
+                const opts = { stroke: '#bdc3c7', strokeWidth: 1, roughness: 3 };
+                
+                if (type === 0) {
+                    rc.circle(x, y, size, { ...opts, fill: randomPick(pallete.snow), fillStyle: 'dots' });
+                } else if (type === 1) {
+                    // 简单的线条雪花
+                    rc.line(x - size, y - size, x + size, y + size, opts);
+                    rc.line(x + size, y - size, x - size, y + size, opts);
+                } else {
+                    // 小圆点
+                    rc.circle(x, y, size/2, { fill: '#ddd', fillStyle: 'solid', roughness: 0, stroke: 'none' });
+                }
+            }
+        }
+
+        // --- 3. 生成逻辑主函数 ---
+        function generateTree() {
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 1. 绘制背景装饰
+            drawBackground();
+
+            const centerX = canvas.width / 2;
+            // 树的基础参数
+            const treeBaseY = canvas.height - 150; // 树底部的Y位置
+            const layers = randomInt(3, 5); // 树的层数 3-4层
+            const layerHeight = 80; // 每一层的高度
+            
+            // 2. 绘制树干
+            const trunkWidth = 50;
+            const trunkHeight = 60;
+            const trunkPoints = [
+                [centerX - trunkWidth/2 + random(-5, 5), treeBaseY],
+                [centerX + trunkWidth/2 + random(-5, 5), treeBaseY],
+                [centerX + trunkWidth/2 + random(-2, 2), treeBaseY + trunkHeight],
+                [centerX - trunkWidth/2 + random(-2, 2), treeBaseY + trunkHeight]
+            ];
+            drawRoughPolygon(trunkPoints, randomPick(pallete.trunks), 'hachure');
+
+            // 3. 绘制树冠 (层叠)
+            let currentY = treeBaseY;
+            let currentWidth = 220; // 最底层宽度
+
+            // 我们需要存储每一层的顶部中心点，以便放置装饰和星星
+            let lastTopY = currentY;
+
+            for(let i = 0; i < layers; i++) {
+                const topWidth = currentWidth * 0.5; // 梯形顶部宽度
+                const h = layerHeight + random(-10, 10);
+                
+                // 计算梯形四个点，加入随机抖动让形状不规则
+                const p1 = [centerX - currentWidth/2 + random(-10, 10), currentY + random(-5, 5)]; // 左下
+                const p2 = [centerX + currentWidth/2 + random(-10, 10), currentY + random(-5, 5)]; // 右下
+                // 顶部稍微重叠到上一层的上方
+                const nextY = currentY - h;
+                const p3 = [centerX + topWidth/2 + random(-10, 10), nextY]; // 右上
+                const p4 = [centerX - topWidth/2 + random(-10, 10), nextY]; // 左上
+
+                // 颜色和填充风格随机
+                const color = randomPick(pallete.greens);
+                const style = randomPick(['hachure', 'zigzag', 'cross-hatch']);
+
+                drawRoughPolygon([p1, p2, p3, p4], color, style);
+
+                // 在当前层画装饰球
+                const decorCount = randomInt(2, 5);
+                for(let d=0; d<decorCount; d++) {
+                    // 简单的插值算法，让球在梯形内部
+                    const decorY = random(nextY + 20, currentY - 10);
+                    // 根据Y计算当前宽度的范围，避免球画到树外面
+                    const progress = (decorY - nextY) / h;
+                    const maxX = (topWidth + (currentWidth - topWidth) * progress) / 2 - 10;
+                    const decorX = centerX + random(-maxX, maxX);
+                    
+                    drawBauble(decorX, decorY);
+                }
+
+                // 更新下一层参数
+                currentY = nextY + 30; // 这里的+30是为了让层叠更明显
+                currentWidth = currentWidth * 0.7; // 宽度递减
+                lastTopY = nextY;
+            }
+
+            // 4. 绘制顶部的星星
+            drawStar(centerX, lastTopY - 15, 25, 10);
+        }
+
+        // --- 4. 事件监听 ---
+        window.addEventListener('resize', resizeCanvas);
+        
+        document.getElementById('generateBtn').addEventListener('click', () => {
+             // 简单的点击动画反馈
+             const btn = document.getElementById('generateBtn');
+             generateTree();
+        });
+
+        // 首次运行
+        // 稍微延时确保 Rough.js 加载完毕（虽然CDN在head里通常很快）
+        window.onload = resizeCanvas;
+
+    </script>
+</body>
+</html>

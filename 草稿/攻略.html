@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 驱动交互原型设计工作流 | IXD 分享</title>
+    <!-- 引入 Tailwind CSS 进行快速样式开发 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 FontAwesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 引入 AOS 动画库 -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #0f172a; color: #e2e8f0; scroll-behavior: smooth; }
+        .gradient-text { background: linear-gradient(45deg, #60a5fa, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(148, 163, 184, 0.1); }
+        .code-window { font-family: 'Fira Code', monospace; }
+        .cursor-blink { animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+        
+        /* 模拟编辑器的打字效果 */
+        .typing-effect::after { content: '|'; animation: blink 1s infinite; }
+        
+        /* 步骤连线 */
+        .step-line { position: absolute; left: 50%; width: 2px; height: 100%; background: linear-gradient(to bottom, #3b82f6, #a855f7); transform: translateX(-50%); z-index: 0; }
+        
+        /* 交互微动画 */
+        .hover-scale { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .hover-scale:hover { transform: translateY(-5px); box-shadow: 0 10px 20px -10px rgba(96, 165, 250, 0.5); }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+
+    <!-- 导航进度条 -->
+    <div class="fixed top-0 left-0 h-1 bg-gradient-to-r from-blue-500 to-purple-500 z-50 transition-all duration-300" id="progressBar" style="width: 0%"></div>
+
+    <!-- 1. 封面 Cover -->
+    <section class="min-h-screen flex flex-col justify-center items-center text-center relative px-4">
+        <div class="absolute inset-0 overflow-hidden opacity-20 z-0">
+            <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
+            <div class="absolute top-1/3 right-1/4 w-96 h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
+        </div>
+        
+        <div class="z-10" data-aos="fade-up" data-aos-duration="1000">
+            <div class="inline-block px-4 py-1 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-sm mb-4">
+                Designed for Interaction Designers
+            </div>
+            <h1 class="text-5xl md:text-7xl font-bold mb-6">
+                让代码成为<br><span class="gradient-text">你的第二支笔</span>
+            </h1>
+            <p class="text-xl text-slate-400 max-w-2xl mx-auto mb-8">
+                从 Gemini 复刻到 Cursor 迭代，再到 GitHub 交付。<br>
+                探索 AI 辅助下的高保真原型设计新范式。
+            </p>
+            <a href="#workflow" class="animate-bounce inline-block text-slate-500 mt-12">
+                <i class="fas fa-chevron-down text-2xl"></i>
+            </a>
+        </div>
+    </section>
+
+    <!-- 2. 工作流 Workflow -->
+    <section id="workflow" class="py-20 px-4 relative max-w-6xl mx-auto">
+        <h2 class="text-3xl font-bold text-center mb-16" data-aos="fade-in">
+            <i class="fas fa-layer-group text-blue-500 mr-2"></i> The Workflow
+        </h2>
+        
+        <div class="relative">
+            <!-- 中轴线 (桌面端显示) -->
+            <div class="hidden md:block step-line"></div>
+
+            <!-- 步骤 1: Gemini -->
+            <div class="flex flex-col md:flex-row items-center justify-between mb-24 relative z-10">
+                <div class="md:w-5/12 text-right md:pr-12 order-2 md:order-1" data-aos="fade-right">
+                    <h3 class="text-2xl font-bold text-blue-400 mb-2">01. 视觉转译</h3>
+                    <h4 class="text-xl font-semibold mb-3">Gemini 像素级复刻</h4>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        截图 → HTML。<br>
+                        无论是一张竞品的截图，还是手绘的草图，直接丢给 Gemini。
+                        <br><span class="text-blue-300 bg-blue-900/30 px-2 py-1 rounded text-xs mt-2 inline-block">Prompt: "请复刻这个页面，给我 HTML/Tailwind 代码"</span>
+                    </p>
+                </div>
+                <div class="w-12 h-12 rounded-full bg-slate-800 border-2 border-blue-500 flex items-center justify-center text-blue-500 font-bold z-10 order-1 md:order-2 mb-4 md:mb-0">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="md:w-5/12 md:pl-12 order-3" data-aos="fade-left">
+                    <div class="glass-card p-4 rounded-xl border border-slate-700 h-48 flex items-center justify-center bg-slate-800/50">
+                        <div class="text-center">
+                            <i class="fas fa-image text-4xl text-slate-500 mb-2"></i>
+                            <p class="text-xs text-slate-500">（此处展示 Gemini 根据截图生成的初始代码效果）</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 步骤 2: Cursor (重点 - 交互部分) -->
+            <div class="flex flex-col md:flex-row items-center justify-between mb-24 relative z-10">
+                <div class="md:w-5/12 order-3 md:order-1" data-aos="fade-right">
+                    <!-- 模拟 Cursor 界面 -->
+                    <div class="glass-card rounded-xl overflow-hidden border border-slate-700 shadow-2xl">
+                        <div class="bg-slate-900 px-4 py-2 flex items-center space-x-2 border-b border-slate-700">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            <span class="text-xs text-slate-500 ml-2">App.html - Cursor</span>
+                        </div>
+                        <div class="p-4 code-window text-xs text-green-400 bg-slate-950 h-48 overflow-hidden relative">
+                            <div id="typewriter" class="absolute top-4 left-4 whitespace-pre-wrap"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="w-12 h-12 rounded-full bg-slate-800 border-2 border-purple-500 flex items-center justify-center text-purple-500 font-bold z-10 order-1 md:order-2 mb-4 md:mb-0">
+                    <i class="fas fa-keyboard"></i>
+                </div>
+                <div class="md:w-5/12 text-left md:pl-12 order-2 md:order-3" data-aos="fade-left">
+                    <h3 class="text-2xl font-bold text-purple-400 mb-2">02. 交互注入 & 迭代</h3>
+                    <h4 class="text-xl font-semibold mb-3">Cursor 本地 Refine</h4>
+                    <ul class="text-slate-400 text-sm space-y-2 list-disc pl-5">
+                        <li><strong>Live Preview:</strong> 修改代码，即刻生效，所见即所得。</li>
+                        <li><strong>AI Pair Coding:</strong> 选中代码块，Cmd+K："把这个列表改成点击后展开详情"。</li>
+                        <li><strong>Version Control:</strong> 你的撤回键拥有了时间机器的能力。</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 步骤 3: Github Deployment -->
+            <div class="flex flex-col md:flex-row items-center justify-between relative z-10">
+                <div class="md:w-5/12 text-right md:pr-12 order-2 md:order-1" data-aos="fade-right">
+                    <h3 class="text-2xl font-bold text-green-400 mb-2">03. 云端交付</h3>
+                    <h4 class="text-xl font-semibold mb-3">一键部署到 GitHub</h4>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        告别发送压缩包。
+                        <br>不懂 Git 命令？直接问 Cursor：<br>
+                        <i class="italic">"带我一步步把这个项目推送到 Github Pages"</i><br>
+                        最终产出一个 **真实的 URL**，同事、老板、开发随处访问。
+                    </p>
+                </div>
+                <div class="w-12 h-12 rounded-full bg-slate-800 border-2 border-green-500 flex items-center justify-center text-green-500 font-bold z-10 order-1 md:order-2 mb-4 md:mb-0">
+                    <i class="fas fa-globe"></i>
+                </div>
+                <div class="md:w-5/12 md:pl-12 order-3" data-aos="fade-left">
+                    <div class="glass-card p-6 rounded-xl border border-slate-700 flex flex-col justify-center items-center hover-scale">
+                        <div class="bg-slate-950 rounded p-2 text-xs text-slate-400 w-full mb-2 text-center border border-slate-600">
+                            https://yourname.github.io/prototype-v1
+                        </div>
+                        <button class="bg-green-600 text-white px-4 py-1 rounded text-sm w-full hover:bg-green-500 transition">
+                            Visit Site <i class="fas fa-external-link-alt ml-1"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. 双钻模型与价值 Value -->
+    <section class="py-20 bg-slate-900/50">
+        <div class="max-w-5xl mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-12" data-aos="fade-up">
+                <i class="fas fa-gem text-purple-400 mr-2"></i> Unlocking New Value
+            </h2>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- 阶段一：发散 -->
+                <div class="glass-card p-8 rounded-2xl hover-scale" data-aos="zoom-in" data-aos-delay="100">
+                    <div class="flex items-center mb-4">
+                        <div class="w-10 h-10 rounded bg-blue-500/20 flex items-center justify-center mr-4">
+                            <i class="fas fa-expand-arrows-alt text-blue-400"></i>
+                        </div>
+                        <h3 class="text-xl font-bold">Phase 1: 极速方案发散</h3>
+                    </div>
+                    <p class="text-slate-400 mb-4 text-sm leading-relaxed">
+                        在方案初期，不要纠结细节。
+                    </p>
+                    <div class="bg-slate-950 p-4 rounded-lg border-l-4 border-blue-500">
+                        <p class="text-xs text-slate-300 italic mb-2">"搜索结果展示：用树结构好？还是用弹窗好？"</p>
+                        <p class="text-sm font-semibold text-white">AI 策略：</p>
+                        <p class="text-xs text-slate-400">快速生成两套通用代码，<span class="text-blue-400">做出来看看</span>。极低成本的 A/B Test 辅助决策。</p>
+                    </div>
+                </div>
+
+                <!-- 阶段二：表达 -->
+                <div class="glass-card p-8 rounded-2xl hover-scale" data-aos="zoom-in" data-aos-delay="200">
+                    <div class="flex items-center mb-4">
+                        <div class="w-10 h-10 rounded bg-purple-500/20 flex items-center justify-center mr-4">
+                            <i class="fas fa-project-diagram text-purple-400"></i>
+                        </div>
+                        <h3 class="text-xl font-bold">Phase 2: 高保真沟通</h3>
+                    </div>
+                    <p class="text-slate-400 mb-4 text-sm leading-relaxed">
+                        评审时，静态图永远解释不清 "手感"。
+                    </p>
+                    <div class="bg-slate-950 p-4 rounded-lg border-l-4 border-purple-500">
+                        <p class="text-sm font-semibold text-white">交互还原：</p>
+                        <p class="text-xs text-slate-400">利用 AI 编写复杂的 CSS 动画和 JS 逻辑。还原你脑海中 100% 的想法，减少与开发的沟通损耗。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. 设计师的核心心法 Philosophy -->
+    <section class="py-20 px-4">
+        <div class="max-w-4xl mx-auto text-center" data-aos="fade-up">
+            <h2 class="text-4xl font-bold mb-8">AI 写代码，设计师做什么？</h2>
+            
+            <div class="glass-card p-10 rounded-3xl border border-blue-500/30 shadow-[0_0_50px_rgba(59,130,246,0.1)]">
+                <i class="fas fa-quote-left text-4xl text-slate-600 mb-6 block"></i>
+                <p class="text-2xl md:text-3xl font-light leading-snug mb-8">
+                    清楚地<span class="text-blue-400 font-bold">识别问题</span>所在。<br>
+                    AI 无法帮你定义矛盾点。
+                </p>
+                <div class="grid md:grid-cols-2 gap-6 text-left mt-10">
+                    <div class="border-t border-slate-700 pt-4">
+                        <h4 class="text-lg font-bold text-slate-200 mb-2">🔍 洞察 (Insight)</h4>
+                        <p class="text-sm text-slate-400">比如在搜索设计中，发现"信息密度"与"快速筛选"之间的本质矛盾。这是你作为专家的价值。</p>
+                    </div>
+                    <div class="border-t border-slate-700 pt-4">
+                        <h4 class="text-lg font-bold text-slate-200 mb-2">🧠 归因 (Why)</h4>
+                        <p class="text-sm text-slate-400">如果 AI 做出的方案很好，要反问：<br>“为什么它好？符合了什么交互原则？”</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 5. 提示词技巧 Tips -->
+    <section class="py-20 bg-slate-800/30">
+        <div class="max-w-3xl mx-auto px-4">
+            <h2 class="text-2xl font-bold mb-8 text-center flex items-center justify-center">
+                <i class="fas fa-magic text-yellow-400 mr-2"></i> Prompt Engineering Tips
+            </h2>
+            
+            <div class="space-y-4">
+                <!-- Tip 1 -->
+                <div class="flex items-start" data-aos="fade-right">
+                    <div class="bg-indigo-600 rounded-full p-2 mr-3 mt-1 shadow-lg">
+                        <i class="fas fa-user-astronaut text-white text-xs"></i>
+                    </div>
+                    <div class="bg-slate-700 rounded-2xl rounded-tl-none p-4 shadow-md max-w-lg">
+                        <p class="text-sm text-indigo-200 font-bold mb-1">Tip 1: AI to AI</p>
+                        <p class="text-sm text-slate-300">"我现在要把这个需求发给这一领域的顶尖 AI 专家，请帮我优化这一段提示词 (Prompt)，让它能输出更完美的代码。"</p>
+                    </div>
+                </div>
+
+                <!-- Tip 2 -->
+                <div class="flex items-start justify-end" data-aos="fade-left">
+                    <div class="bg-slate-700 rounded-2xl rounded-tr-none p-4 shadow-md max-w-lg text-right">
+                        <p class="text-sm text-purple-200 font-bold mb-1">Tip 2: 反向提问</p>
+                        <p class="text-sm text-slate-300">"在开始写代码之前，关于这个交互流程，你有哪些需要向我确认的问题？请列出3个关键问题。"</p>
+                    </div>
+                    <div class="bg-purple-600 rounded-full p-2 ml-3 mt-1 shadow-lg">
+                        <i class="fas fa-robot text-white text-xs"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. 结尾 Footer -->
+    <footer class="py-12 text-center text-slate-500 text-sm border-t border-slate-800">
+        <p class="mb-2">Empower your Design with Code.</p>
+        <p>Created by [Your Name] for IXD Sharing</p>
+    </footer>
+
+    <script>
+        // 初始化动画库
+        AOS.init({
+            once: false,
+            offset: 100
+        });
+
+        // 模拟 Cursor 打字效果
+        const textToType = `<!-- 交互逻辑：点击展开 -->
+<div class="search-result" 
+     onclick="toggleDetail(this)">
+   <h3>用户分析报表</h3>
+   <div class="detail hidden">
+      <!-- 动态加载数据 -->
+   </div>
+</div>
+
+<script>
+  function toggleDetail(el) {
+     el.classList.toggle('active');
+     // AI 生成的平滑动画逻辑...
+  }
+<\/script>`;
+        
+        const typeWriterElement = document.getElementById('typewriter');
+        let i = 0;
+        
+        function typeWriter() {
+            if (i < textToType.length) {
+                typeWriterElement.textContent += textToType.charAt(i);
+                i++;
+                // 随机打字速度，模拟真实感
+                setTimeout(typeWriter, Math.random() * 50 + 20);
+            } else {
+                // 打完字后重置，循环演示
+                setTimeout(() => {
+                    typeWriterElement.textContent = '';
+                    i = 0;
+                    typeWriter();
+                }, 3000);
+            }
+        }
+
+        // 启动打字动画当滚动到视图时
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    if(typeWriterElement.textContent === '') typeWriter();
+                }
+            });
+        });
+        observer.observe(document.querySelector('.code-window'));
+
+        // 顶部进度条
+        window.onscroll = function() {
+            let winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+            let height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            let scrolled = (winScroll / height) * 100;
+            document.getElementById("progressBar").style.width = scrolled + "%";
+        };
+    </script>
+</body>
+</html>
