@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B端产品用户体验情绪地图分析报告 (完整版)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <style>
+        :root {
+            --primary: #0052D9;
+            --danger: #D9001B;
+            --warning: #F5A623;
+            --success: #2BA471;
+            --bg-gray: #f5f7fa;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --text-sub: #666666;
+            --border: #e7e7e7;
+        }
+        
+        body {
+            font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-gray);
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+        }
+
+        h1 { margin: 0; font-size: 28px; color: var(--text-main); }
+        .subtitle { color: var(--text-sub); margin-top: 10px; }
+
+        .module-section {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 40px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+        }
+
+        .module-title {
+            font-size: 22px;
+            border-left: 5px solid var(--primary);
+            padding-left: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .task-block {
+            margin-bottom: 50px;
+            border-bottom: 1px dashed var(--border);
+            padding-bottom: 30px;
+        }
+
+        .task-block:last-child { border-bottom: none; margin-bottom: 0; }
+        
+        .task-block h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 350px;
+            background: #fff;
+            margin-bottom: 20px;
+            border: 1px solid #f0f0f0;
+            border-radius: 4px;
+        }
+
+        .insights-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            margin-top: 15px;
+        }
+
+        .insights-table th {
+            text-align: left;
+            padding: 12px;
+            background-color: #f8f9fb;
+            color: var(--text-sub);
+            border-bottom: 2px solid var(--primary);
+            font-weight: 600;
+        }
+
+        .insights-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+
+        .score-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: white;
+            font-size: 12px;
+            min-width: 30px;
+            text-align: center;
+        }
+        
+        .score-high { background-color: var(--success); }
+        .score-mid { background-color: var(--warning); }
+        .score-low { background-color: var(--danger); }
+
+        .quote {
+            font-style: italic;
+            color: var(--text-sub);
+            border-left: 3px solid #e0e0e0;
+            padding-left: 10px;
+            margin: 5px 0;
+            font-size: 13px;
+            background: #fafafa;
+            padding: 5px 10px;
+        }
+        
+        .quote::before { content: "“"; color: #ccc; }
+        .quote::after { content: "”"; color: #ccc; }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>用户体验情绪地图与洞察报告</h1>
+        <p class="subtitle">数据来源：可用性测试行为数据</p>
+    </header>
+
+    <!-- 模块一：管道任务 -->
+    <div class="module-section" id="pipeline">
+        <div class="module-title">
+            <span>模块一：管道任务 (Data Pipeline)</span>
+            <span style="font-size:14px; color:#666; font-weight:normal;">操作流畅度中等 | 核心痛点：运维入口、批量操作</span>
+        </div>
+
+        <!-- 合并后的任务 -->
+        <div class="task-block">
+            <h3>任务：实时管道完整流程</h3>
+            <div id="chart_pipeline_merged" class="chart-container"></div>
+            <table class="insights-table">
+                <thead><tr><th width="15%">关键步骤</th><th width="10%">均分</th><th width="35%">用户原声 (Quotes)</th><th width="40%">设计洞察与建议</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td>1-3 添加表</td>
+                        <td><span class="score-badge score-mid">2.6</span></td>
+                        <td><div class="quote">快速选表无效，没删逗号导致失败</div></td>
+                        <td><strong>容错性低：</strong>输入框对分隔符敏感。建议增加自动识别逗号/回车的能力，并优化穿梭框的标题引导。</td>
+                    </tr>
+                    <tr>
+                        <td>1-4 批量改名</td>
+                        <td><span class="score-badge score-mid">2.8</span></td>
+                        <td><div class="quote">先写了表名，再选择了'对象'...感知不到修改在哪里</div></td>
+                        <td><strong>操作顺序冲突：</strong>用户习惯先填内容后选对象。需兼容此操作顺序，并增加结果高亮反馈。</td>
+                    </tr>
+                    <tr>
+                        <td>1-6 保存启动</td>
+                        <td><span class="score-badge score-mid">2.6</span></td>
+                        <td><div class="quote">找不到启动入口...为什么没有保存并启动</div></td>
+                        <td><strong>流程中断：</strong>缺少"一键流"。建议在页面底部增加"保存并启动"的主操作按钮。</td>
+                    </tr>
+                    <tr>
+                        <td>2-1 添加表/主键</td>
+                        <td><span class="score-badge score-low">1.9</span></td>
+                        <td><div class="quote">直接重置了任务...以为重置是撤销</div><div class="quote">找不到入口，直觉点了来源去向的'编辑'</div></td>
+                        <td><strong>灾难性误操作：</strong>运维态下"添加表"入口隐蔽，导致用户误点"重置"清空所有配置。必须为"重置"增加高风险确认。</td>
+                    </tr>
+                    <tr>
+                        <td>3-2 修改表同步</td>
+                        <td><span class="score-badge score-mid">2.6</span></td>
+                        <td><div class="quote">找不到修改入口，先找批量编辑...</div></td>
+                        <td><strong>入口可发现性弱：</strong>建议在单行列表上直接提供显性的"编辑"操作。</td>
+                    </tr>
+                    <tr>
+                        <td>3-4 重新同步</td>
+                        <td><span class="score-badge score-mid">2.3</span></td>
+                        <td><div class="quote">找不到，把'重新同步'与'启动表'混淆</div></td>
+                        <td><strong>文案歧义：</strong>用户难以区分操作含义。建议优化文案为"重置同步"并配合Hover提示说明后果。</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 模块二：检测任务 -->
+    <div class="module-section" id="detection">
+        <div class="module-title">
+            <span>模块二：检测任务 (Data Quality)</span>
+            <span style="font-size:14px; color:#666; font-weight:normal;">心智模型严重冲突 | 核心痛点：逆向逻辑、检测范围入口</span>
+        </div>
+
+        <!-- Task 1 -->
+        <div class="task-block">
+            <h3>任务 1：字段空值/范围检测配置</h3>
+            <div id="chart_detection_1" class="chart-container"></div>
+            <table class="insights-table">
+                <thead><tr><th width="15%">关键步骤</th><th width="10%">均分</th><th width="35%">用户原声 (Quotes)</th><th width="40%">设计洞察与建议</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td>1-5 范围(=0)</td>
+                        <td><span class="score-badge score-low">1.8</span></td>
+                        <td><div class="quote">觉得检测都需要和自己的目标反过来，配置卡了很久</div></td>
+                        <td><strong>逆向思维负担：</strong>系统强制用户定义"正常"(Null=0)，用户只想找"异常"。必须提供"报警模式"(Null>0)。</td>
+                    </tr>
+                    <tr>
+                        <td>1-3 添加对象</td>
+                        <td><span class="score-badge score-mid">2.5</span></td>
+                        <td><div class="quote">点击整行直接全选了</div></td>
+                        <td><strong>交互热区错误：</strong>列表交互不符合直觉。应缩小全选热区，或支持点击行即选中。</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Task 2 -->
+        <div class="task-block">
+            <h3>任务 2：两表一致性检测</h3>
+            <div id="chart_detection_2" class="chart-container"></div>
+            <table class="insights-table">
+                <thead><tr><th width="15%">关键步骤</th><th width="10%">均分</th><th width="35%">用户原声 (Quotes)</th><th width="40%">设计洞察与建议</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td>2-4 检测范围</td>
+                        <td><span class="score-badge score-low">1.5</span></td>
+                        <td><div class="quote">没找到；忽略了... 以为范围是在规则部分配置的</div></td>
+                        <td><strong>视觉盲区：</strong>该配置项位置极其隐蔽，但却是关键的一环。建议将其下沉到规则配置页或显著提权。</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+         <!-- Task 3 -->
+        <div class="task-block">
+            <h3>任务 3：跨模块任务调用</h3>
+            <div id="chart_detection_3" class="chart-container"></div>
+            <table class="insights-table">
+                <tbody><tr><td colspan="4" style="text-align:center; color:#999;">此任务流程相对顺畅，主要建议优化"沿用配置"时的参数预览。</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 模块三：数据服务 (重点更新) -->
+    <div class="module-section" id="dataservice">
+        <div class="module-title">
+            <span>模块三：数据服务 (Data Service)</span>
+            <span style="font-size:14px; color:#666; font-weight:normal;">流程频繁被打断 | 核心痛点：API路径查找、强制调试弹窗</span>
+        </div>
+
+        <!-- Task 1 -->
+        <div class="task-block">
+            <h3>任务 1：发布员工信息查询API</h3>
+            <div id="chart_service_1" class="chart-container"></div>
+            <table class="insights-table">
+                <thead><tr><th width="15%">关键步骤</th><th width="10%">均分</th><th width="35%">用户原声 (Quotes)</th><th width="40%">设计洞察与建议</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td>1-2/1-4 配置变量</td>
+                        <td><span class="score-badge score-low">2.0</span></td>
+                        <td><div class="quote">要填调试值觉得特别奇怪，不敢点了</div><div class="quote">被调试值打断了</div></td>
+                        <td><strong>强制调试阻断：</strong>“配置态”不应强制校验数值。建议逻辑配置与数据调试分离。</td>
+                    </tr>
+                    <tr>
+                        <td>1-9 找Path/调用</td>
+                        <td><span class="score-badge score-low">1.9</span></td>
+                        <td><div class="quote">感知不到api的路径是什么</div><div class="quote">找不到，找了很久</div></td>
+                        <td><strong>体验黑洞：</strong>用户在任何地方都找不到一个完整的URL。必须在详情页提供"一键复制完整CURL"。</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Task 2 (Split) -->
+        <div class="task-block">
+            <h3>任务 2：创建数据接收接口</h3>
+            <div id="chart_service_2" class="chart-container"></div>
+            <table class="insights-table">
+                <thead><tr><th width="15%">关键步骤</th><th width="10%">均分</th><th width="35%">用户原声 (Quotes)</th><th width="40%">设计洞察与建议</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td>2-1 配置JSON</td>
+                        <td><span class="score-badge score-low">2.0</span></td>
+                        <td><div class="quote">Next disabled, selection not obvious</div><div class="quote">没觉得节点选择可以选</div></td>
+                        <td><strong>状态不可见：</strong>树形结构的选中态样式极弱，用户不知道需要点选节点才能激活下一步。需增强视觉反馈。</td>
+                    </tr>
+                    <tr>
+                        <td>2-3 路径配置</td>
+                        <td><span class="score-badge score-low">2.0</span></td>
+                        <td><div class="quote">直接点了保存，详情页报错但没意识到是路径没填</div></td>
+                        <td><strong>缺乏即时校验：</strong>缺少表单必填项的前端校验，导致用户在提交后才收到晦涩的错误提示。</td>
+                    </tr>
+                     <tr>
+                        <td>2-5 上线调用</td>
+                        <td><span class="score-badge score-low">2.0</span></td>
+                        <td><div class="quote">不知道为什么路径不能重复</div></td>
+                        <td><strong>错误指引缺失：</strong>路径冲突时仅报错但不提供解决方案。建议提示修改建议。</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Task 3 (Split) -->
+        <div class="task-block">
+            <h3>任务 3：查看规则管理和运维</h3>
+            <div id="chart_service_3" class="chart-container"></div>
+            <table class="insights-table">
+                <thead><tr><th width="15%">关键步骤</th><th width="10%">均分</th><th width="35%">用户原声 (Quotes)</th><th width="40%">设计洞察与建议</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td>3-3 找路径/调用</td>
+                        <td><span class="score-badge score-mid">2.4</span></td>
+                        <td><div class="quote">蓝色文字但点击没有反应</div><div class="quote">希望跳转，无法复制</div></td>
+                        <td><strong>示能（Affordance）误导：</strong>UI做成了链接样式但不仅不可点，连复制都不行。必须实现“对象”到“API详情”的跳转闭环。</td>
+                    </tr>
+                    <tr>
+                        <td>3-2 理解规则</td>
+                        <td><span class="score-badge score-low">2.0</span></td>
+                        <td><div class="quote">作用对象理解不了</div></td>
+                        <td><strong>概念抽象：</strong>文案过于技术化。建议结合具体业务场景（如：“此规则将限制哪些API的访问”）进行解释。</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    function renderChart(domId, steps, scores, taskName, stages) {
+        var chartDom = document.getElementById(domId);
+        var myChart = echarts.init(chartDom);
+        var option;
+
+        // 构建markLine数据
+        var markLineData = [{ yAxis: 3, lineStyle: { color: '#bbb', type: 'dotted', width: 1 }, label: { formatter: '及格线 (3.0)', position: 'end', color: '#999', fontSize:10 } }];
+        
+        // 构建graphic组件用于显示阶段标签
+        var graphicElements = [];
+        
+        // 如果有阶段分隔，添加垂直分隔线和阶段标签
+        if (stages && stages.length > 0) {
+            var stageLabels = ['创建并配置一个完整的实时管道任务', '详情页添加表', '表运维'];
+            var prevIndex = 0;
+            
+            stages.forEach(function(stageIndex, idx) {
+                if (stageIndex > 0 && stageIndex <= steps.length) {
+                    // 添加垂直分隔线（在阶段开始之前）
+                    markLineData.push({
+                        xAxis: stageIndex - 0.5,
+                        lineStyle: { color: '#999', type: 'dashed', width: 2 },
+                        label: { show: false }
+                    });
+                    
+                    // 添加阶段标签（在当前阶段中间位置）
+                    var stageStart = prevIndex;
+                    var stageEnd = stageIndex;
+                    var labelX = (stageStart + stageEnd) / 2;
+                    
+                    if (idx < stageLabels.length) {
+                        graphicElements.push({
+                            type: 'text',
+                            left: ((labelX / steps.length) * 100) + '%',
+                            top: '35',
+                            style: {
+                                text: stageLabels[idx],
+                                fontSize: 12,
+                                fontWeight: 'bold',
+                                fill: '#666',
+                                textAlign: 'center'
+                            }
+                        });
+                    }
+                    prevIndex = stageIndex;
+                }
+            });
+            
+            // 添加最后一个阶段的标签
+            if (prevIndex < steps.length) {
+                var lastLabelX = (prevIndex + steps.length) / 2;
+                graphicElements.push({
+                    type: 'text',
+                    left: ((lastLabelX / steps.length) * 100) + '%',
+                    top: '35',
+                    style: {
+                        text: stageLabels[stages.length] || stageLabels[stageLabels.length - 1],
+                        fontSize: 12,
+                        fontWeight: 'bold',
+                        fill: '#666',
+                        textAlign: 'center'
+                    }
+                });
+            }
+        }
+
+        option = {
+            title: {
+                text: '用户情绪体验曲线',
+                left: '20',
+                top: '10',
+                textStyle: { fontSize: 14, color: '#666', fontWeight: 'bold' }
+            },
+            tooltip: {
+                trigger: 'axis',
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                formatter: function (params) {
+                    var val = params[0].value;
+                    var emotionStr = "";
+                    if(val <= 2.5) emotionStr = "<span style='color:#D9001B'>焦虑/挫败</span>";
+                    else if(val <= 3.5) emotionStr = "<span style='color:#F5A623'>平淡/迟疑</span>";
+                    else emotionStr = "<span style='color:#2BA471'>顺利/愉悦</span>";
+                    
+                    return `<b>${params[0].name}</b><br/>体验分：${val}<br/>情绪：${emotionStr}`;
+                }
+            },
+            grid: { top: 60, bottom: 40, left: 50, right: 40, containLabel: false },
+            xAxis: {
+                type: 'category',
+                data: steps,
+                axisLabel: { interval: 0, fontSize: 11, color: '#333', rotate: 15 },
+                axisLine: { lineStyle: { color: '#ddd' } },
+                axisTick: { show: false }
+            },
+            yAxis: {
+                type: 'value',
+                min: 1,
+                max: 5,
+                splitNumber: 4,
+                name: '情绪分 (1-5)',
+                nameTextStyle: { padding:[0,0,0,20] },
+                axisLabel: { color: '#999' },
+                splitLine: { lineStyle: { type: 'dashed', color: '#eee' } }
+            },
+            visualMap: {
+                show: false,
+                pieces: [
+                    {gt: 0, lte: 2.5, color: '#D9001B'}, 
+                    {gt: 2.5, lte: 3.5, color: '#F5A623'},
+                    {gt: 3.5, lte: 5, color: '#2BA471'}
+                ],
+                outOfRange: { color: '#999' }
+            },
+            graphic: graphicElements.length > 0 ? graphicElements : undefined,
+            series: [{
+                name: 'Score',
+                data: scores,
+                type: 'line',
+                smooth: 0.3,
+                symbol: 'circle',
+                symbolSize: 8,
+                lineStyle: { width: 4, shadowColor: 'rgba(0,0,0,0.1)', shadowBlur: 10, shadowOffsetY: 5 },
+                markLine: {
+                    symbol: 'none',
+                    data: markLineData
+                },
+                markPoint: {
+                    symbol: 'pin',
+                    symbolSize: 40,
+                    label: { show: true, color: '#fff', fontSize: 10, formatter: '!' },
+                    itemStyle: { color: '#D9001B' },
+                    data: scores.map((val, idx) => {
+                        // 标记极低分点
+                        return val <= 2.2 ? { coord: [idx, val] } : null;
+                    }).filter(item => item !== null)
+                },
+                areaStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        { offset: 0, color: 'rgba(0, 82, 217, 0.1)' },
+                        { offset: 1, color: 'rgba(0, 82, 217, 0)' }
+                    ])
+                }
+            }]
+        };
+
+        myChart.setOption(option);
+        window.addEventListener('resize', function() { myChart.resize(); });
+    }
+
+    // --- 数据渲染 ---
+
+    // 1. 管道任务（合并为1个任务，3个阶段）
+    // 阶段1：创建并配置一个完整的实时管道任务（步骤1-6）
+    // 阶段2：详情页添加表（步骤7-8）
+    // 阶段3：表运维（步骤9-12）
+    renderChart('chart_pipeline_merged', 
+        ['1-1创建', '1-2数据源', '1-3添加表', '1-4改名', '1-5删除', '1-6保存启动', '2-1加表/主键', '2-2启动表', '3-1找表', '3-2同步方式', '3-3找Logs', '3-4重新同步'], 
+        [3.0, 3.0, 2.6, 2.8, 3.2, 2.6, 1.9, 3.0, 3.0, 2.6, 3.0, 2.3], 
+        'P_Merged', 
+        [6, 8]); // 在第6步和第8步后标记阶段分隔
+
+    // 2. 检测任务
+    renderChart('chart_detection_1', 
+        ['1-1创建', '1-2连接', '1-3对象', '1-4规则', '1-5范围(=0)', '1-6自定义', '1-7范围(>=100)', '1-8运行'], 
+        [3.3, 3.3, 2.5, 3.2, 1.8, 2.5, 2.6, 2.5], 'D1');
+
+    renderChart('chart_detection_2', 
+        ['2-1创建', '2-2连接', '2-3对象', '2-4检测范围', '2-5比对', '2-6保存'], 
+        [3.3, 3.5, 3.5, 1.5, 2.2, 3.3], 'D2');
+
+    renderChart('chart_detection_3', 
+        ['3-1找任务', '3-2拖节点', '3-3配置', '3-4报告'], 
+        [3.3, 3.5, 3.0, 3.5], 'D3');
+
+    // 3. 数据服务 (已拆分)
+    renderChart('chart_service_1', 
+        ['1-1查询', '1-2排序', '1-3分页', '1-4变量', '1-5下一步', '1-6方法', '1-7绑定', '1-8上线', '1-9找Path', '1-10导出'], 
+        [2.8, 2.0, 3.0, 2.2, 2.4, 2.5, 3.0, 3.5, 1.9, 2.0], 'S1');
+
+    renderChart('chart_service_2', 
+        ['2-1配置Json', '2-2去向库', '2-3方法路径', '2-4绑定', '2-5上线调用', '2-6看结果'], 
+        [2.0, 2.8, 2.0, 3.0, 2.0, 3.5], 'S2');
+
+    renderChart('chart_service_3', 
+        ['3-1找入口', '3-2理解规则', '3-3找路径', '3-4运维'], 
+        [3.0, 2.0, 2.4, 3.5], 'S3');
+
+</script>
+</body>
+</html>
