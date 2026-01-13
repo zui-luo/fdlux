@@ -42,6 +42,27 @@
     "version": "v2.0",
     "date": "2025-12-12",
     "author": "N"
+  },
+  {
+    "id": "5",
+    "title": "2025-圣诞树",
+    "description": "圣诞树",
+    "path": "草稿/圣诞树.html",
+    "icon": "🎄",
+    "status": "done",
+    "version": "v1.0",
+    "date": "2026-01-09",
+    "author": "N"
+  },
+  {
+    "id": "6",
+    "title": "2025-原型制作攻略",
+    "description": "制作原型的攻略",
+    "path": "草稿/攻略.html",
+    "icon": "📄",
+    "status": "wip",
+    "version": "v1.0",
+    "date": "2026-01-09",
+    "author": "N"
   }
 ]
-
