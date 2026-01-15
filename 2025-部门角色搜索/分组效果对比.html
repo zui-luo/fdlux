@@ -1,0 +1,2040 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分组效果对比 - 管理后台</title>
+    <!-- 引入 FontAwesome 图标库 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #00bfa5; /* 青绿色主色 */
+            --primary-light: #e0f7f3;
+            --text-main: #333333;
+            --text-secondary: #666666;
+            --text-light: #999999;
+            --bg-body: #f0f2f5;
+            --bg-sidebar: #f2f3f5;
+            --bg-white: #ffffff;
+            --border-color: #e8e8e8;
+            --hover-bg: #f5f5f5;
+            --tag-crm-bg: #e6f7ff;
+            --tag-crm-text: #1890ff;
+            --tag-role-bg: #f9f0ff;
+            --tag-role-text: #722ed1;
+            --header-h: 36px; /* 角色分组标题高度 */
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            font-size: 14px;
+        }
+
+        /* 顶部方案切换器 */
+        .scheme-switcher {
+            background: #fff;
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .scheme-btn {
+            padding: 6px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: #fff;
+            color: var(--text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .scheme-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .scheme-btn.active {
+            background: var(--primary-color);
+            color: #fff;
+            border-color: var(--primary-color);
+        }
+
+        /* --- 主内容区容器 --- */
+        .main-wrapper {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* --- 左侧导航栏 --- */
+        .sidebar {
+            width: 220px;
+            background-color: var(--bg-sidebar);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid transparent;
+            padding: 16px 0;
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
+
+        .app-header {
+            padding: 0 20px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-main);
+        }
+        
+        .app-header i { color: var(--primary-color); }
+
+        .menu-category {
+            font-size: 12px;
+            color: var(--text-light);
+            padding: 12px 20px 8px;
+        }
+
+        .menu-item {
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .menu-item:hover {
+            color: var(--text-main);
+        }
+
+        .menu-item.active {
+            background-color: var(--bg-white);
+            color: var(--primary-color);
+            margin: 0 8px;
+            border-radius: 4px;
+            padding-left: 12px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+        }
+
+        .menu-item i {
+            width: 16px; 
+            text-align: center;
+        }
+
+        /* --- 主内容区容器 --- */
+        .main-container {
+            flex: 1;
+            display: flex;
+            margin: 16px 16px 16px 0;
+            background-color: var(--bg-white);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        /* --- 中间：组织架构树 --- */
+        .org-tree-panel {
+            width: 280px;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+        }
+
+        .tree-header {
+            padding: 16px;
+        }
+
+        .tab-switch {
+            display: flex;
+            background: #f5f5f5;
+            border-radius: 4px;
+            padding: 2px;
+            margin-bottom: 16px;
+        }
+
+        .tab-item {
+            flex: 1;
+            text-align: center;
+            padding: 6px 0;
+            font-size: 13px;
+            cursor: pointer;
+            border-radius: 2px;
+            color: var(--text-secondary);
+        }
+
+        .tab-item.active {
+            background: #fff;
+            color: var(--primary-color);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            font-weight: 500;
+        }
+
+        .quick-actions {
+            margin-bottom: 12px;
+        }
+
+        .qa-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        .qa-item:hover { background-color: var(--hover-bg); }
+        .qa-item.active {
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+        }
+        .qa-item i { width: 16px; }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 10px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 8px 30px 8px 32px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 13px;
+            outline: none;
+        }
+        .search-box i.fa-search {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+        }
+        .search-box i.fa-times {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+            cursor: pointer;
+        }
+        
+        /* 搜索浮层容器 */
+        .search-results-overlay {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            margin-top: 1px;
+        }
+        
+        .search-results-overlay.show {
+            display: block;
+        }
+        
+        .search-results-list {
+            list-style: none !important;
+            padding: 8px !important;
+            margin: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+        }
+        
+        .search-results-list .search-result-item {
+            display: flex !important;
+            flex-direction: column !important;
+            padding: 12px 16px !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            border-radius: 8px !important;
+            color: var(--text-main) !important;
+            margin: 0 !important;
+        }
+        
+        .search-results-list .search-result-item:hover:not(.selected) {
+            background-color: #F5F7FA !important;
+        }
+        
+        .search-results-list .search-result-item.selected {
+            background-color: var(--primary-light) !important;
+            color: var(--text-main) !important;
+        }
+        
+        .search-results-list .search-result-item .result-content {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 4px !important;
+            width: 100% !important;
+        }
+        
+        .search-results-list .search-result-item .result-title-row {
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            width: 100% !important;
+        }
+        
+        .search-results-list .search-result-item .dept-label {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 0 !important;
+            background-color: transparent !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 4px !important;
+            flex-shrink: 0 !important;
+            width: 20px !important;
+            height: 20px !important;
+        }
+        
+        .search-results-list .search-result-item .dept-icon {
+            font-size: 12px !important;
+            color: var(--primary-color) !important;
+        }
+        
+        .search-results-list .search-result-item.selected .dept-label {
+            border-color: var(--primary-color) !important;
+        }
+        
+        .search-results-list .search-result-item.selected .dept-icon {
+            color: var(--primary-color) !important;
+        }
+        
+        .search-results-list .search-result-item .node-name {
+            flex: 1 !important;
+            display: flex !important;
+            align-items: center !important;
+            overflow: hidden;
+            font-size: 14px !important;
+            font-weight: 500 !important;
+        }
+        
+        .search-results-list .search-result-item .result-path-row {
+            display: flex !important;
+            align-items: center !important;
+            padding-left: calc(8px + 2px + 6px + 8px) !important;
+            width: 100% !important;
+        }
+        
+        .search-results-list .search-result-item .result-path {
+            font-size: 12px !important;
+            color: var(--text-light) !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            direction: rtl;
+            unicode-bidi: plaintext;
+            max-width: 100% !important;
+            line-height: 1.4;
+        }
+        
+        .search-results-list .search-result-item.selected .result-path {
+            color: var(--text-secondary) !important;
+        }
+        
+        .search-results-list .search-result-item .highlight {
+            color: var(--primary-color) !important;
+            font-weight: 500 !important;
+        }
+        
+        .search-results-list .search-result-item.selected .highlight {
+            color: var(--primary-color) !important;
+            font-weight: 600 !important;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 48px;
+            color: var(--text-light);
+            font-size: 14px;
+        }
+        
+        .search-section-container {
+            margin-bottom: 0;
+        }
+        
+        .search-section-header {
+            transition: background-color 0.2s ease;
+        }
+        
+        .search-section-header:hover {
+            background-color: #f0f0f0 !important;
+        }
+        
+        .search-section-content {
+            display: block;
+        }
+
+        .tree-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 8px 16px 8px;
+            position: relative;
+        }
+
+        /* 方案A：仅「创建的角色」吸顶 */
+        .tree-content.scheme-a {
+            padding: 0;
+        }
+
+        .role-header-a {
+            height: var(--header-h);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            background: #fff;
+            border-bottom: 1px solid #f7f7f7;
+        }
+
+        #header-a-sync {
+            /* 不吸顶，正常滚动 */
+        }
+
+        #header-a-create {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+
+        .role-list-a {
+            padding: 8px 0;
+        }
+
+        /* 方案B：堆叠吸顶（无折叠） */
+        .tree-content.scheme-b {
+            padding: 0;
+        }
+
+        .role-header-b {
+            height: var(--header-h);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            background: #fff;
+            border-bottom: 1px solid #f7f7f7;
+        }
+
+        #header-b-sync {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+
+        #header-b-create {
+            position: sticky;
+            top: var(--header-h);
+            z-index: 10;
+            box-shadow: 0 -1px 0 #eee;
+        }
+
+        .role-list-b {
+            padding: 8px 0;
+        }
+
+        /* 方案C：堆叠吸顶（点击回顶） */
+        .tree-content.scheme-c {
+            padding: 0;
+        }
+
+        .role-header-c {
+            height: var(--header-h);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            background: #fff;
+            border-bottom: 1px solid #f7f7f7;
+            cursor: pointer;
+        }
+
+        #header-c-sync {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+
+        #header-c-sync:hover {
+            background: #fafafa;
+        }
+
+        #header-c-create {
+            position: sticky;
+            top: var(--header-h);
+            z-index: 10;
+            box-shadow: 0 -1px 0 #eee;
+        }
+
+        .role-list-c {
+            padding: 8px 0;
+        }
+
+        /* 方案D：堆叠吸顶（可折叠） */
+        .tree-content.scheme-d {
+            padding: 0;
+        }
+
+        .role-header-d {
+            height: var(--header-h);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            background: #fff;
+            border-bottom: 1px solid #f7f7f7;
+            cursor: pointer;
+        }
+
+        #header-d-sync {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+
+        #header-d-create {
+            position: sticky;
+            top: var(--header-h);
+            z-index: 10;
+            box-shadow: 0 -1px 0 #eee;
+        }
+
+        .role-list-d {
+            padding: 8px 0;
+        }
+
+        .role-list-d.hidden {
+            display: none;
+        }
+
+        .role-header-d.collapsed .svg-arrow {
+            transform: rotate(-90deg);
+        }
+
+        .svg-arrow {
+            width: 14px;
+            height: 14px;
+            fill: #999;
+            margin-right: 6px;
+            transition: 0.2s;
+        }
+
+        /* 方案E：分区滚动 */
+        .tree-content.scheme-e {
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .role-part {
+            flex-shrink: 0;
+            flex-grow: 0;
+            flex-basis: var(--header-h);
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            transition: flex-grow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+        }
+
+        .role-part.active {
+            flex-grow: 1;
+        }
+
+        .role-part-header {
+            height: var(--header-h);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            cursor: default;
+            background: #fff;
+            z-index: 5;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .role-part-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0 12px;
+            opacity: 0;
+            transition: 0.2s;
+            pointer-events: none;
+        }
+
+        .role-part.active .role-part-content {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .tree-node {
+            display: flex;
+            align-items: center;
+            padding: 8px 8px;
+            cursor: pointer;
+            border-radius: 4px;
+            color: var(--text-main);
+            font-size: 13px;
+        }
+
+        .tree-node:hover { background-color: var(--hover-bg); }
+        
+        .tree-node.selected {
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+        }
+        
+        .tree-node.highlighted {
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+        }
+
+        .tree-indent { width: 14px; display: inline-block; }
+        .tree-toggle { 
+            width: 16px; 
+            text-align: center; 
+            color: var(--text-light); 
+            font-size: 10px; 
+            margin-right: 4px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .tree-toggle:hover {
+            color: var(--primary-color);
+        }
+        .tree-icon {
+            margin-right: 6px;
+            color: var(--primary-color);
+        }
+
+        /* --- 右侧：数据表格 --- */
+        .table-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            color: var(--text-main);
+            gap: 8px;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 36px;
+            height: 20px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: var(--primary-color);
+        }
+        input:checked + .slider:before {
+            transform: translateX(16px);
+        }
+
+        .toolbar {
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tool-left { display: flex; gap: 12px; }
+        .tool-right { display: flex; gap: 12px; align-items: center; }
+
+        .btn {
+            padding: 7px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            outline: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .btn-primary:hover { background-color: #00a891; }
+
+        .btn-default {
+            background-color: white;
+            border-color: var(--border-color);
+            color: var(--text-main);
+        }
+        .btn-default:hover { border-color: var(--primary-color); color: var(--primary-color); }
+
+        .dropdown-trigger {
+            border: 1px solid var(--border-color);
+            padding: 7px 12px;
+            border-radius: 4px;
+            color: var(--text-main);
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+        }
+        
+        .search-input-group {
+            position: relative;
+            width: 200px;
+        }
+        .search-input-group input {
+            width: 100%;
+            padding: 7px 12px 7px 30px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            outline: none;
+            font-size: 13px;
+        }
+        .search-input-group i {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+        }
+
+        .table-container {
+            flex: 1;
+            overflow: auto;
+            padding: 0 24px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px 10px;
+            background-color: #f8f9fa;
+            color: var(--text-secondary);
+            font-weight: 500;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #f0f0f0;
+            color: var(--text-main);
+            vertical-align: middle;
+        }
+
+        tr:hover td {
+            background-color: #fbfbfb;
+        }
+
+        .custom-checkbox {
+            width: 16px;
+            height: 16px;
+            border: 1px solid #d9d9d9;
+            border-radius: 2px;
+            display: inline-block;
+            position: relative;
+            cursor: pointer;
+            vertical-align: text-bottom;
+        }
+
+        .cell-user {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            object-fit: cover;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+
+        .role-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-right: 6px;
+        }
+        .tag-blue { background-color: var(--tag-crm-bg); color: var(--tag-crm-text); }
+        .tag-purple { background-color: var(--tag-role-bg); color: var(--tag-role-text); }
+
+        .table-action i {
+            color: var(--text-light);
+            cursor: pointer;
+        }
+
+        .icon-help {
+            color: #b0b0b0;
+            margin-left: 4px;
+            font-size: 12px;
+        }
+
+        .pagination {
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .page-ctrl {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .page-btn {
+            width: 28px;
+            height: 28px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background: white;
+            font-size: 12px;
+        }
+        .page-btn:hover { border-color: var(--primary-color); color: var(--primary-color); }
+        .page-btn.active { border-color: var(--primary-color); color: var(--primary-color); border: 1px solid var(--primary-color); }
+        
+        .page-select {
+            border: 1px solid var(--border-color);
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: white;
+            color: var(--text-main);
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #ccc; }
+
+    </style>
+</head>
+<body>
+
+    <!-- 顶部方案切换器 -->
+    <div class="scheme-switcher">
+        <button class="scheme-btn active" data-scheme="A">方案 A：仅「创建的角色」吸顶</button>
+        <button class="scheme-btn" data-scheme="B">方案 B：堆叠吸顶（无折叠）</button>
+        <button class="scheme-btn" data-scheme="C">方案 C：堆叠吸顶（点击回顶）</button>
+        <button class="scheme-btn" data-scheme="D">方案 D：堆叠吸顶（可折叠）</button>
+        <button class="scheme-btn" data-scheme="E">方案 E：分区滚动</button>
+    </div>
+
+    <div class="main-wrapper">
+        <!-- 左侧侧边栏 -->
+        <nav class="sidebar">
+            <div class="app-header">
+                <i class="fa-solid fa-gear"></i>
+                <span>管理后台</span>
+            </div>
+
+            <div class="menu-category">基本信息</div>
+            <a href="#" class="menu-item"><i class="fa-solid fa-table-cells-large"></i> 产品中心</a>
+            <a href="#" class="menu-item"><i class="fa-solid fa-layer-group"></i> 版本信息</a>
+            <a href="#" class="menu-item"><i class="fa-solid fa-file-invoice"></i> 订单信息</a>
+            <a href="#" class="menu-item"><i class="fa-regular fa-building"></i> 企业信息</a>
+
+            <div class="menu-category">通讯录</div>
+            <a href="#" class="menu-item active"><i class="fa-solid fa-sitemap"></i> 内部组织</a>
+            <a href="#" class="menu-item"><i class="fa-solid fa-share-nodes"></i> 外部组织</a>
+
+            <div class="menu-category">权限中心</div>
+            <a href="#" class="menu-item"><i class="fa-solid fa-user-shield"></i> 管理员</a>
+            <a href="#" class="menu-item"><i class="fa-solid fa-lock"></i> 权限组查询</a>
+
+            <div class="menu-category">管理工具</div>
+            <a href="#" class="menu-item"><i class="fa-solid fa-sliders"></i> 企业设置</a>
+            <a href="#" class="menu-item"><i class="fa-solid fa-box-open"></i> 产品设置</a>
+            <a href="#" class="menu-item"><i class="fa-regular fa-envelope"></i> 消息推送</a>
+            <a href="#" class="menu-item"><i class="fa-solid fa-chart-line"></i> 使用统计</a>
+
+            <div class="menu-category">日志审计</div>
+            <a href="#" class="menu-item"><i class="fa-solid fa-file-lines"></i> 企业日志</a>
+            <a href="#" class="menu-item"><i class="fa-solid fa-clipboard-list"></i> 产品日志</a>
+        </nav>
+
+        <!-- 主体内容 -->
+        <div class="main-container">
+            
+            <!-- 中间：组织架构树 -->
+            <div class="org-tree-panel">
+                <div class="tree-header">
+                    <div class="tab-switch">
+                        <div class="tab-item active" data-tab="department">部门</div>
+                        <div class="tab-item" data-tab="role">角色</div>
+                    </div>
+                    
+                    <div class="quick-actions">
+                        <div class="qa-item"><i class="fa-solid fa-users"></i> 全部成员</div>
+                        <div class="qa-item"><i class="fa-solid fa-user-minus"></i> 离职成员</div>
+                    </div>
+
+                    <div class="search-box">
+                        <i class="fa-solid fa-search"></i>
+                        <input type="text" id="searchInput" placeholder="搜索部门">
+                        <i class="fa-solid fa-times" id="clearSearchBtn" style="display: none;"></i>
+                        <div class="search-results-overlay" id="searchResultsOverlay">
+                            <ul class="search-results-list" id="searchResultsList">
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div style="font-size: 12px; color: #999; margin-bottom: 8px;" id="sectionLabel">部门</div>
+                </div>
+
+                <div class="tree-content" id="treeContent">
+                    <!-- 树形结构将通过JavaScript动态生成 -->
+                </div>
+            </div>
+
+            <!-- 右侧：表格数据 -->
+            <div class="table-panel">
+                <div class="panel-header">
+                    <div class="panel-title" id="panelTitle">全公司成员</div>
+                    <div class="toggle-switch">
+                        <label class="switch">
+                            <input type="checkbox" checked>
+                            <span class="slider"></span>
+                        </label>
+                        允许成员修改姓名
+                    </div>
+                </div>
+
+                <div class="toolbar">
+                    <div class="tool-left">
+                        <button class="btn btn-primary">邀请成员</button>
+                        <button class="btn btn-default">导出</button>
+                    </div>
+                    <div class="tool-right">
+                        <div style="font-size: 13px; color: #666;">账号状态</div>
+                        <div class="dropdown-trigger">
+                             全部 <i class="fa-solid fa-angle-down" style="font-size: 10px;"></i>
+                        </div>
+                        <div class="search-input-group">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" placeholder="搜索成员">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table id="memberTable">
+                        <thead>
+                            <tr>
+                                <th width="40"><span class="custom-checkbox"></span></th>
+                                <th>姓名</th>
+                                <th>手机 <i class="fa-regular fa-circle-question icon-help"></i></th>
+                                <th>邮箱 <i class="fa-regular fa-circle-question icon-help"></i></th>
+                                <th>角色</th>
+                                <th width="60">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="memberTableBody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination">
+                    <div class="dropdown-trigger" style="border: none; padding: 0;">
+                        <select class="page-select">
+                            <option>20 条/页</option>
+                        </select>
+                    </div>
+                    
+                    <div style="flex: 1; margin-left: 10px;">共100条</div>
+                    
+                    <div class="page-ctrl">
+                        <div class="page-btn"><i class="fa-solid fa-angles-left"></i></div>
+                        <div class="page-btn"><i class="fa-solid fa-angle-left"></i></div>
+                        <div class="page-btn active">1</div>
+                        <div style="margin: 0 4px;">/ 50</div>
+                        <div class="page-btn"><i class="fa-solid fa-angle-right"></i></div>
+                        <div class="page-btn"><i class="fa-solid fa-angles-right"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 右上角头像 -->
+    <div style="position: absolute; top: 16px; right: 20px;">
+        <img src="https://i.pravatar.cc/150?u=header" style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid white; cursor: pointer;">
+    </div>
+
+    <script>
+        // 当前方案
+        let currentScheme = 'A';
+        
+        // 生成部门树数据结构
+        const departmentData = generateDepartmentTree();
+        
+        // 生成角色数据结构
+        const roleData = generateRoleData();
+        
+        // 当前标签（'department' 或 'role'）
+        let currentTab = 'department';
+        
+        // 当前选中的部门ID
+        let selectedDepartmentId = 'company';
+        
+        // 当前选中的角色ID
+        let selectedRoleId = null;
+        
+        // 搜索关键词
+        let searchKeyword = '';
+        
+        // 保存的搜索结果
+        let savedSearchResults = [];
+        
+        // 搜索结果分组的展开状态
+        let searchSectionExpanded = {
+            synced: true,
+            created: true
+        };
+        
+        // 高亮的节点ID
+        let highlightedNodeId = null;
+        
+        // DOM元素
+        const treeContent = document.getElementById('treeContent');
+        const panelTitle = document.getElementById('panelTitle');
+        const memberTableBody = document.getElementById('memberTableBody');
+        const searchInput = document.getElementById('searchInput');
+        const clearSearchBtn = document.getElementById('clearSearchBtn');
+        const searchResultsOverlay = document.getElementById('searchResultsOverlay');
+        const searchResultsList = document.getElementById('searchResultsList');
+        const searchBox = document.querySelector('.search-box');
+        const sectionLabel = document.getElementById('sectionLabel');
+        const tabItems = document.querySelectorAll('.tab-item');
+        const quickActions = document.querySelector('.quick-actions');
+        const schemeButtons = document.querySelectorAll('.scheme-btn');
+        
+        // 生成部门树数据（复用原逻辑）
+        function generateDepartmentTree() {
+            const surnames = ['张', '王', '李', '赵', '刘', '陈', '杨', '黄', '周', '吴', '徐', '孙', '胡', '朱', '高', '林', '何', '郭', '马', '罗'];
+            const firstNames = ['伟', '芳', '娜', '敏', '静', '强', '磊', '军', '洋', '勇', '艳', '涛', '明', '超', '杰', '秀', '娟', '辉', '刚', '婷'];
+            const roles = ['部门经理', '主管', '普通员工', '实习生'];
+            
+            function generateName() {
+                const surname = surnames[Math.floor(Math.random() * surnames.length)];
+                const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+                return surname + firstName;
+            }
+            
+            function generateEmail(name) {
+                const pinyinMap = {
+                    '张': 'zhang', '王': 'wang', '李': 'li', '赵': 'zhao', '刘': 'liu',
+                    '陈': 'chen', '杨': 'yang', '黄': 'huang', '周': 'zhou', '吴': 'wu',
+                    '徐': 'xu', '孙': 'sun', '胡': 'hu', '朱': 'zhu', '高': 'gao',
+                    '林': 'lin', '何': 'he', '郭': 'guo', '马': 'ma', '罗': 'luo',
+                    '伟': 'wei', '芳': 'fang', '娜': 'na', '敏': 'min', '静': 'jing',
+                    '强': 'qiang', '磊': 'lei', '军': 'jun', '洋': 'yang', '勇': 'yong',
+                    '艳': 'yan', '涛': 'tao', '明': 'ming', '超': 'chao', '杰': 'jie',
+                    '秀': 'xiu', '娟': 'juan', '辉': 'hui', '刚': 'gang', '婷': 'ting'
+                };
+                
+                let pinyin = '';
+                for (let char of name) {
+                    pinyin += pinyinMap[char] || char.toLowerCase();
+                }
+                
+                return pinyin + '@company.com';
+            }
+            
+            function generatePhone() {
+                const prefix = '+86-1';
+                const middle = Math.floor(Math.random() * 9000000000) + 1000000000;
+                return prefix + middle.toString().substring(1);
+            }
+            
+            function generateMembers(departmentId, count = 3) {
+                const members = [];
+                for (let i = 0; i < count; i++) {
+                    const name = generateName();
+                    members.push({
+                        id: `${departmentId}-member-${i}`,
+                        name: name,
+                        email: generateEmail(name),
+                        phone: generatePhone(),
+                        role: roles[Math.floor(Math.random() * roles.length)]
+                    });
+                }
+                return members;
+            }
+            
+            function generateTree(parentId, parentName, level, maxLevel) {
+                const department = {
+                    id: parentId,
+                    name: parentName,
+                    level: level,
+                    children: [],
+                    members: generateMembers(parentId),
+                    expanded: false
+                };
+                
+                if (level >= maxLevel) {
+                    return department;
+                }
+                
+                let childDepartments = [];
+                
+                if (parentId === 'company') {
+                    childDepartments = [
+                        { id: 'admin-center', name: '行政中心' },
+                        { id: 'tech-center', name: '技术中心' },
+                        { id: 'business-center', name: '业务中心' }
+                    ];
+                    department.expanded = true;
+                } else if (parentId === 'admin-center') {
+                    childDepartments = [
+                        { id: 'hr-department', name: '人事部门' },
+                        { id: 'finance-department', name: '财务部门' },
+                        { id: 'general-department', name: '总务部门' }
+                    ];
+                } else if (parentId === 'tech-center') {
+                    childDepartments = [
+                        { id: 'rd-department', name: '研发部门' },
+                        { id: 'qa-department', name: '质量保证部门' },
+                        { id: 'devops-department', name: '运维部门' }
+                    ];
+                } else if (parentId === 'business-center') {
+                    childDepartments = [
+                        { id: 'sales-department', name: '销售部门' },
+                        { id: 'marketing-department', name: '市场部门' },
+                        { id: 'customer-department', name: '客户部门' }
+                    ];
+                }
+                
+                childDepartments.forEach(child => {
+                    department.children.push(generateTree(child.id, child.name, level + 1, maxLevel));
+                });
+                
+                return department;
+            }
+            
+            return generateTree('company', '公司', 1, 3);
+        }
+        
+        // 生成角色数据（复用原逻辑，增加更多数据以便测试滚动）
+        function generateRoleData() {
+            const surnames = ['张', '王', '李', '赵', '刘', '陈', '杨', '黄', '周', '吴', '徐', '孙', '胡', '朱', '高', '林', '何', '郭', '马', '罗'];
+            const firstNames = ['伟', '芳', '娜', '敏', '静', '强', '磊', '军', '洋', '勇', '艳', '涛', '明', '超', '杰', '秀', '娟', '辉', '刚', '婷'];
+            
+            function generateName() {
+                const surname = surnames[Math.floor(Math.random() * surnames.length)];
+                const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+                return surname + firstName;
+            }
+            
+            function generateEmail(name) {
+                const pinyinMap = {
+                    '张': 'zhang', '王': 'wang', '李': 'li', '赵': 'zhao', '刘': 'liu',
+                    '陈': 'chen', '杨': 'yang', '黄': 'huang', '周': 'zhou', '吴': 'wu',
+                    '徐': 'xu', '孙': 'sun', '胡': 'hu', '朱': 'zhu', '高': 'gao',
+                    '林': 'lin', '何': 'he', '郭': 'guo', '马': 'ma', '罗': 'luo',
+                    '伟': 'wei', '芳': 'fang', '娜': 'na', '敏': 'min', '静': 'jing',
+                    '强': 'qiang', '磊': 'lei', '军': 'jun', '洋': 'yang', '勇': 'yong',
+                    '艳': 'yan', '涛': 'tao', '明': 'ming', '超': 'chao', '杰': 'jie',
+                    '秀': 'xiu', '娟': 'juan', '辉': 'hui', '刚': 'gang', '婷': 'ting'
+                };
+                let pinyin = '';
+                for (let char of name) {
+                    pinyin += pinyinMap[char] || char.toLowerCase();
+                }
+                return pinyin + '@company.com';
+            }
+            
+            function generatePhone() {
+                const prefix = '+86-1';
+                const middle = Math.floor(Math.random() * 9000000000) + 1000000000;
+                return prefix + middle.toString().substring(1);
+            }
+            
+            function generateRoleMembers(roleId, count = 2) {
+                const members = [];
+                const departments = ['研发', '销售', '产品', '市场', '视觉'];
+                const managedDepts = [['研发', '产品', '视觉'], ['销售', '市场'], ['研发'], ['产品'], ['市场']];
+                
+                for (let i = 0; i < count; i++) {
+                    const name = generateName();
+                    const dept = departments[Math.floor(Math.random() * departments.length)];
+                    const managed = managedDepts[Math.floor(Math.random() * managedDepts.length)];
+                    members.push({
+                        id: `${roleId}-member-${i}`,
+                        name: name,
+                        email: generateEmail(name),
+                        phone: generatePhone(),
+                        department: dept,
+                        managedDepartments: managed
+                    });
+                }
+                return members;
+            }
+            
+            // 生成20个角色的辅助函数
+            function generateRolesForGroup(groupId, groupName, prefix, count = 20) {
+                const roleNames = [
+                    '总监', '经理', '主管', '负责人', '专员', '助理', '顾问', '分析师',
+                    '工程师', '设计师', '运营', '市场', '销售', '客服', '财务', '人事',
+                    '行政', '法务', '采购', '质量'
+                ];
+                const roles = [];
+                for (let i = 0; i < count; i++) {
+                    const roleName = `${groupName}${roleNames[i % roleNames.length]}${i + 1}`;
+                    const roleId = `${prefix}-${groupId}-role-${i + 1}`;
+                    roles.push({
+                        id: roleId,
+                        name: roleName,
+                        members: generateRoleMembers(roleId, Math.floor(Math.random() * 3) + 2)
+                    });
+                }
+                return roles;
+            }
+            
+            const syncedRoles = {
+                type: 'synced',
+                name: '同步的角色',
+                expanded: true,
+                groups: [
+                    {
+                        id: 'synced-group-01',
+                        name: 'CRM角色组01',
+                        expanded: true,
+                        roles: generateRolesForGroup('synced-group-01', 'CRM角色组01', 'synced', 20)
+                    },
+                    {
+                        id: 'synced-group-02',
+                        name: 'CRM角色组02',
+                        expanded: false,
+                        roles: generateRolesForGroup('synced-group-02', 'CRM角色组02', 'synced', 20)
+                    },
+                    {
+                        id: 'synced-group-03',
+                        name: 'CRM角色组03',
+                        expanded: false,
+                        roles: generateRolesForGroup('synced-group-03', 'CRM角色组03', 'synced', 20)
+                    },
+                    {
+                        id: 'synced-group-04',
+                        name: 'CRM角色组04',
+                        expanded: false,
+                        roles: generateRolesForGroup('synced-group-04', 'CRM角色组04', 'synced', 20)
+                    },
+                    {
+                        id: 'synced-group-05',
+                        name: 'CRM角色组05',
+                        expanded: false,
+                        roles: generateRolesForGroup('synced-group-05', 'CRM角色组05', 'synced', 20)
+                    }
+                ]
+            };
+            
+            const createdRoles = {
+                type: 'created',
+                name: '创建的角色',
+                expanded: true,
+                groups: [
+                    {
+                        id: 'created-group-01',
+                        name: 'CRM角色组01',
+                        expanded: true,
+                        roles: generateRolesForGroup('created-group-01', 'CRM角色组01', 'created', 20)
+                    },
+                    {
+                        id: 'created-group-02',
+                        name: 'CRM角色组02',
+                        expanded: false,
+                        roles: generateRolesForGroup('created-group-02', 'CRM角色组02', 'created', 20)
+                    },
+                    {
+                        id: 'created-group-03',
+                        name: 'CRM角色组03',
+                        expanded: false,
+                        roles: generateRolesForGroup('created-group-03', 'CRM角色组03', 'created', 20)
+                    },
+                    {
+                        id: 'created-group-04',
+                        name: 'CRM角色组04',
+                        expanded: false,
+                        roles: generateRolesForGroup('created-group-04', 'CRM角色组04', 'created', 20)
+                    },
+                    {
+                        id: 'created-group-05',
+                        name: 'CRM角色组05',
+                        expanded: false,
+                        roles: generateRolesForGroup('created-group-05', 'CRM角色组05', 'created', 20)
+                    }
+                ]
+            };
+            
+            return {
+                synced: syncedRoles,
+                created: createdRoles
+            };
+        }
+        
+        // 渲染部门树（复用原逻辑）
+        function renderDepartmentTree() {
+            treeContent.innerHTML = '';
+            treeContent.className = 'tree-content';
+            renderTreeNode(departmentData, 0);
+        }
+        
+        function renderTreeNode(node, depth) {
+            const nodeEl = document.createElement('div');
+            nodeEl.className = 'tree-node';
+            if (node.id === selectedDepartmentId) {
+                nodeEl.classList.add('selected');
+            }
+            if (node.id === highlightedNodeId) {
+                nodeEl.classList.add('highlighted');
+            }
+            nodeEl.dataset.id = node.id;
+            
+            let indentHtml = '';
+            for (let i = 0; i < depth; i++) {
+                indentHtml += '<span class="tree-indent"></span>';
+            }
+            
+            let toggleHtml = '';
+            if (node.children && node.children.length > 0) {
+                const iconClass = node.expanded ? 'fa-caret-down' : 'fa-caret-right';
+                toggleHtml = `<div class="tree-toggle"><i class="fa-solid ${iconClass}"></i></div>`;
+            } else {
+                toggleHtml = '<div class="tree-toggle"></div>';
+            }
+            
+            let iconClass = 'fa-sitemap';
+            if (node.id === 'company') {
+                iconClass = 'fa-sitemap';
+            } else if (depth === 1) {
+                iconClass = 'fa-building';
+            } else {
+                iconClass = 'fa-user-group';
+            }
+            
+            nodeEl.innerHTML = `
+                ${indentHtml}
+                ${toggleHtml}
+                <i class="fa-solid ${iconClass} tree-icon" ${node.id === 'company' ? 'style="color: #00bfa5;"' : ''}></i> 
+                ${node.name}
+            `;
+            
+            treeContent.appendChild(nodeEl);
+            
+            if (node.children && node.children.length > 0 && node.expanded) {
+                node.children.forEach(child => {
+                    renderTreeNode(child, depth + 1);
+                });
+            }
+            
+            const toggleEl = nodeEl.querySelector('.tree-toggle');
+            if (toggleEl && node.children && node.children.length > 0) {
+                toggleEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    node.expanded = !node.expanded;
+                    renderDepartmentTree();
+                });
+            }
+            
+            nodeEl.addEventListener('click', (e) => {
+                if (e.target.closest('.tree-toggle')) {
+                    return;
+                }
+                e.stopPropagation();
+                selectDepartment(node.id);
+            });
+        }
+        
+        function selectDepartment(departmentId) {
+            selectedDepartmentId = departmentId;
+            expandPathToNode(departmentId);
+            renderDepartmentTree();
+            renderMemberList(departmentId);
+        }
+        
+        function expandPathToNode(nodeId) {
+            function expandParent(currentNodeId) {
+                const parent = findParentNode(departmentData, currentNodeId);
+                if (parent) {
+                    parent.expanded = true;
+                    expandParent(parent.id);
+                }
+            }
+            expandParent(nodeId);
+        }
+        
+        function findParentNode(root, nodeId) {
+            if (!root || !root.children || root.children.length === 0) {
+                return null;
+            }
+            
+            for (const child of root.children) {
+                if (child.id === nodeId) {
+                    return root;
+                }
+                
+                const parent = findParentNode(child, nodeId);
+                if (parent) {
+                    return parent;
+                }
+            }
+            
+            return null;
+        }
+        
+        function findDepartmentById(node, id) {
+            if (node.id === id) {
+                return node;
+            }
+            
+            if (node.children && node.children.length > 0) {
+                for (let child of node.children) {
+                    const found = findDepartmentById(child, id);
+                    if (found) {
+                        return found;
+                    }
+                }
+            }
+            
+            return null;
+        }
+        
+        function getAllMembers(node) {
+            let members = [...node.members];
+            
+            if (node.children && node.children.length > 0) {
+                node.children.forEach(child => {
+                    members = members.concat(getAllMembers(child));
+                });
+            }
+            
+            return members;
+        }
+        
+        function getAvatarColor(name) {
+            const colors = [
+                '#00bfa5', '#1890ff', '#722ed1', '#f5222d', '#fa8c16',
+                '#52c41a', '#13c2c2', '#eb2f96', '#2f54eb', '#faad14',
+            ];
+            
+            if (name && name.length > 0) {
+                const charCode = name.charCodeAt(0);
+                return colors[charCode % colors.length];
+            }
+            return colors[0];
+        }
+        
+        function generateAvatarHtml(name) {
+            const firstChar = name && name.length > 0 ? name.charAt(0) : '?';
+            const bgColor = getAvatarColor(name);
+            return `<div class="avatar" style="background-color: ${bgColor};">${firstChar}</div>`;
+        }
+        
+        function renderMemberList(departmentId) {
+            const department = findDepartmentById(departmentData, departmentId);
+            
+            if (!department) {
+                memberTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 48px; color: #999;">未找到该部门</td></tr>';
+                return;
+            }
+            
+            if (departmentId === 'company') {
+                panelTitle.textContent = '全公司成员';
+            } else {
+                panelTitle.textContent = department.name;
+            }
+            
+            const tableHead = document.querySelector('#memberTable thead tr');
+            tableHead.innerHTML = `
+                <th width="40"><span class="custom-checkbox"></span></th>
+                <th>姓名</th>
+                <th>手机 <i class="fa-regular fa-circle-question icon-help"></i></th>
+                <th>邮箱 <i class="fa-regular fa-circle-question icon-help"></i></th>
+                <th>角色</th>
+                <th width="60">操作</th>
+            `;
+            
+            const members = getAllMembers(department);
+            
+            if (members.length === 0) {
+                memberTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 48px; color: #999;">该部门暂无成员</td></tr>';
+            } else {
+                let html = '';
+                members.forEach((member) => {
+                    const avatarHtml = generateAvatarHtml(member.name);
+                    
+                    let roleTags = '';
+                    if (member.role === '部门经理') {
+                        roleTags = `<span class="role-tag tag-blue"><i class="fa-solid fa-user"></i> ${member.role}</span>`;
+                    } else {
+                        roleTags = `<span class="role-tag tag-purple"><i class="fa-solid fa-user-tag"></i> ${member.role}</span>`;
+                    }
+                    
+                    html += `
+                        <tr>
+                            <td><span class="custom-checkbox"></span></td>
+                            <td>
+                                <div class="cell-user">
+                                    ${avatarHtml}
+                                    <span>${member.name}</span>
+                                </div>
+                            </td>
+                            <td style="color: #555;">${member.phone}</td>
+                            <td style="color: #555;">${member.email}</td>
+                            <td>${roleTags}</td>
+                            <td class="table-action"><i class="fa-solid fa-ellipsis-vertical"></i></td>
+                        </tr>
+                    `;
+                });
+                
+                memberTableBody.innerHTML = html;
+            }
+        }
+        
+        // 渲染角色树 - 根据方案不同使用不同的渲染方式
+        function renderRoleTree() {
+            treeContent.innerHTML = '';
+            treeContent.className = `tree-content scheme-${currentScheme.toLowerCase()}`;
+            
+            if (currentScheme === 'E') {
+                renderRoleTreeSchemeE();
+            } else {
+                renderRoleTreeSchemeABCD();
+            }
+        }
+        
+        // 方案A/B/C/D的渲染方式
+        function renderRoleTreeSchemeABCD() {
+            // 同步的角色标题
+            const headerSync = document.createElement('div');
+            headerSync.id = `header-${currentScheme.toLowerCase()}-sync`;
+            headerSync.className = `role-header-${currentScheme.toLowerCase()}`;
+            
+            if (currentScheme === 'C' || currentScheme === 'D') {
+                headerSync.style.cursor = 'pointer';
+                if (currentScheme === 'C') {
+                    headerSync.addEventListener('click', () => {
+                        treeContent.scrollTo({top: 0, behavior: 'smooth'});
+                    });
+                } else if (currentScheme === 'D') {
+                    headerSync.addEventListener('click', () => {
+                        toggleSectionD('sync');
+                    });
+                }
+            }
+            
+            const syncTitle = document.createElement('div');
+            syncTitle.style.display = 'flex';
+            syncTitle.style.alignItems = 'center';
+            
+            if (currentScheme === 'D') {
+                syncTitle.innerHTML = `
+                    <svg class="svg-arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+                    <span style="font-weight:600;font-size:13px">同步的角色</span>
+                `;
+            } else {
+                syncTitle.innerHTML = `<span style="font-weight:600;font-size:13px">同步的角色</span>`;
+            }
+            
+            headerSync.appendChild(syncTitle);
+            treeContent.appendChild(headerSync);
+            
+            // 同步的角色列表
+            const listSync = document.createElement('div');
+            listSync.id = `list-${currentScheme.toLowerCase()}-sync`;
+            listSync.className = `role-list-${currentScheme.toLowerCase()}`;
+            if (currentScheme === 'D' && !roleData.synced.expanded) {
+                listSync.classList.add('hidden');
+            }
+            renderRoleGroups(listSync, roleData.synced);
+            treeContent.appendChild(listSync);
+            
+            // 创建的角色标题
+            const headerCreate = document.createElement('div');
+            headerCreate.id = `header-${currentScheme.toLowerCase()}-create`;
+            headerCreate.className = `role-header-${currentScheme.toLowerCase()}`;
+            
+            if (currentScheme === 'D') {
+                headerCreate.style.cursor = 'pointer';
+                headerCreate.addEventListener('click', () => {
+                    toggleSectionD('create');
+                });
+            }
+            
+            const createTitle = document.createElement('div');
+            createTitle.style.display = 'flex';
+            createTitle.style.alignItems = 'center';
+            createTitle.style.justifyContent = 'space-between';
+            createTitle.style.width = '100%';
+            
+            const createTitleLeft = document.createElement('div');
+            createTitleLeft.style.display = 'flex';
+            createTitleLeft.style.alignItems = 'center';
+            
+            if (currentScheme === 'D') {
+                createTitleLeft.innerHTML = `
+                    <svg class="svg-arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+                    <span style="font-weight:600;font-size:13px">创建的角色</span>
+                `;
+            } else {
+                createTitleLeft.innerHTML = `<span style="font-weight:600;font-size:13px">创建的角色</span>`;
+            }
+            
+            createTitle.appendChild(createTitleLeft);
+            createTitle.innerHTML += '<span style="font-size:22px;color:#ccc;font-weight:300;line-height:1">+</span>';
+            headerCreate.appendChild(createTitle);
+            treeContent.appendChild(headerCreate);
+            
+            // 创建的角色列表
+            const listCreate = document.createElement('div');
+            listCreate.id = `list-${currentScheme.toLowerCase()}-create`;
+            listCreate.className = `role-list-${currentScheme.toLowerCase()}`;
+            if (currentScheme === 'D' && !roleData.created.expanded) {
+                listCreate.classList.add('hidden');
+            }
+            renderRoleGroups(listCreate, roleData.created);
+            listCreate.style.paddingBottom = '100px';
+            treeContent.appendChild(listCreate);
+        }
+        
+        // 方案E的渲染方式（分区滚动）
+        function renderRoleTreeSchemeE() {
+            // 同步的角色分区
+            const part1 = document.createElement('div');
+            part1.className = 'role-part active';
+            part1.id = 'part-1';
+            part1.addEventListener('mouseenter', () => hoverPartE(1));
+            
+            const part1Header = document.createElement('div');
+            part1Header.className = 'role-part-header';
+            part1Header.innerHTML = `
+                <svg class="svg-arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+                <span style="font-weight:600;font-size:13px">同步的角色</span>
+            `;
+            part1.appendChild(part1Header);
+            
+            const part1Content = document.createElement('div');
+            part1Content.className = 'role-part-content';
+            renderRoleGroups(part1Content, roleData.synced);
+            part1.appendChild(part1Content);
+            
+            treeContent.appendChild(part1);
+            
+            // 创建的角色分区
+            const part2 = document.createElement('div');
+            part2.className = 'role-part';
+            part2.id = 'part-2';
+            part2.addEventListener('mouseenter', () => hoverPartE(2));
+            
+            const part2Header = document.createElement('div');
+            part2Header.className = 'role-part-header';
+            part2Header.innerHTML = `
+                <svg class="svg-arrow" viewBox="0 0 24 24" style="transform:rotate(-90deg)"><path d="M7 10l5 5 5-5z"/></svg>
+                <span style="font-weight:600;font-size:13px">创建的角色</span>
+                <div style="flex:1"></div>
+                <span style="font-size:22px;color:#ccc;font-weight:300;line-height:1">+</span>
+            `;
+            part2.appendChild(part2Header);
+            
+            const part2Content = document.createElement('div');
+            part2Content.className = 'role-part-content';
+            renderRoleGroups(part2Content, roleData.created);
+            part2.appendChild(part2Content);
+            
+            treeContent.appendChild(part2);
+        }
+        
+        // 渲染角色组和角色
+        function renderRoleGroups(container, section) {
+            section.groups.forEach(group => {
+                const groupEl = renderRoleGroup(group, section.type);
+                container.appendChild(groupEl);
+            });
+        }
+        
+        function renderRoleGroup(group, sectionType) {
+            const groupEl = document.createElement('div');
+            groupEl.className = 'role-group';
+            groupEl.style.marginLeft = '12px';
+            
+            const groupTitle = document.createElement('div');
+            groupTitle.className = 'tree-node';
+            groupTitle.style.cssText = 'display: flex; align-items: center; padding: 8px; cursor: pointer; border-radius: 4px;';
+            groupTitle.innerHTML = `
+                <div class="tree-toggle" style="width: 16px; text-align: center; margin-right: 4px;">
+                    <i class="fa-solid ${group.expanded ? 'fa-caret-down' : 'fa-caret-right'}" style="font-size: 10px; color: var(--text-light);"></i>
+                </div>
+                <i class="fa-solid fa-folder tree-icon" style="margin-right: 6px; color: var(--primary-color);"></i>
+                <span>${group.name}</span>
+            `;
+            
+            groupTitle.addEventListener('click', (e) => {
+                if (e.target.closest('.tree-toggle')) {
+                    e.stopPropagation();
+                    group.expanded = !group.expanded;
+                    renderRoleTree();
+                }
+            });
+            
+            groupEl.appendChild(groupTitle);
+            
+            if (group.expanded) {
+                group.roles.forEach(role => {
+                    const roleEl = renderRoleItem(role);
+                    groupEl.appendChild(roleEl);
+                });
+            }
+            
+            return groupEl;
+        }
+        
+        function renderRoleItem(role) {
+            const roleEl = document.createElement('div');
+            roleEl.className = 'tree-node';
+            roleEl.dataset.roleId = role.id;
+            if (role.id === selectedRoleId) {
+                roleEl.classList.add('selected');
+            }
+            roleEl.style.cssText = 'display: flex; align-items: center; padding: 8px 8px 8px 28px; cursor: pointer; border-radius: 4px;';
+            roleEl.innerHTML = `
+                <div class="tree-toggle" style="width: 16px;"></div>
+                <i class="fa-solid fa-user-group tree-icon" style="margin-right: 6px; color: var(--primary-color);"></i>
+                <span>${role.name}</span>
+            `;
+            
+            roleEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectRole(role.id);
+            });
+            
+            return roleEl;
+        }
+        
+        // 方案D的折叠/展开逻辑
+        function toggleSectionD(key) {
+            const section = key === 'sync' ? roleData.synced : roleData.created;
+            const header = document.getElementById(`header-d-${key}`);
+            const list = document.getElementById(`list-d-${key}`);
+            const scrollContainer = treeContent;
+            
+            if (key === 'sync' && scrollContainer.scrollTop > 50) {
+                scrollContainer.scrollTo({top: 0, behavior: 'smooth'});
+                return;
+            }
+            
+            section.expanded = !section.expanded;
+            header.classList.toggle('collapsed');
+            list.classList.toggle('hidden');
+        }
+        
+        // 方案E的hover切换逻辑
+        function hoverPartE(idx) {
+            const p1 = document.getElementById('part-1');
+            const p2 = document.getElementById('part-2');
+            const a1 = p1.querySelector('.svg-arrow');
+            const a2 = p2.querySelector('.svg-arrow');
+            
+            if (idx === 1) {
+                p1.classList.add('active');
+                p2.classList.remove('active');
+                a1.style.transform = 'rotate(0deg)';
+                a2.style.transform = 'rotate(-90deg)';
+            } else {
+                p2.classList.add('active');
+                p1.classList.remove('active');
+                a2.style.transform = 'rotate(0deg)';
+                a1.style.transform = 'rotate(-90deg)';
+            }
+        }
+        
+        function selectRole(roleId) {
+            selectedRoleId = roleId;
+            renderRoleTree();
+            renderRoleMemberList(roleId);
+        }
+        
+        function findRoleById(roleId) {
+            for (const group of roleData.synced.groups) {
+                const role = group.roles.find(r => r.id === roleId);
+                if (role) return role;
+            }
+            for (const group of roleData.created.groups) {
+                const role = group.roles.find(r => r.id === roleId);
+                if (role) return role;
+            }
+            return null;
+        }
+        
+        function renderRoleMemberList(roleId) {
+            const role = findRoleById(roleId);
+            
+            if (!role) {
+                memberTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 48px; color: #999;">未找到该角色</td></tr>';
+                return;
+            }
+            
+            panelTitle.textContent = role.name;
+            
+            const tableHead = document.querySelector('#memberTable thead tr');
+            tableHead.innerHTML = `
+                <th width="40"><span class="custom-checkbox"></span></th>
+                <th>姓名</th>
+                <th>所属部门 <i class="fa-regular fa-circle-question icon-help"></i></th>
+                <th>分管部门 <i class="fa-regular fa-circle-question icon-help"></i></th>
+                <th width="60">操作</th>
+            `;
+            
+            if (role.members.length === 0) {
+                memberTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 48px; color: #999;">该角色暂无成员</td></tr>';
+            } else {
+                let html = '';
+                role.members.forEach((member) => {
+                    const avatarHtml = generateAvatarHtml(member.name);
+                    const managedDeptsText = member.managedDepartments.join('、');
+                    
+                    html += `
+                        <tr>
+                            <td><span class="custom-checkbox"></span></td>
+                            <td>
+                                <div class="cell-user">
+                                    ${avatarHtml}
+                                    <span>${member.name}</span>
+                                </div>
+                            </td>
+                            <td style="color: #555;">${member.department}</td>
+                            <td style="color: #555;">${managedDeptsText}</td>
+                            <td class="table-action"><i class="fa-solid fa-ellipsis-vertical"></i></td>
+                        </tr>
+                    `;
+                });
+                
+                memberTableBody.innerHTML = html;
+            }
+        }
+        
+        // 切换方案
+        function switchScheme(scheme) {
+            currentScheme = scheme;
+            
+            schemeButtons.forEach(btn => {
+                if (btn.dataset.scheme === scheme) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            if (currentTab === 'role') {
+                renderRoleTree();
+            }
+        }
+        
+        // 切换标签
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            tabItems.forEach(item => {
+                if (item.dataset.tab === tab) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+            
+            if (tab === 'role') {
+                searchInput.placeholder = '搜索角色';
+                if (quickActions) {
+                    quickActions.style.display = 'none';
+                }
+                if (sectionLabel) {
+                    sectionLabel.style.display = 'none';
+                }
+                renderRoleTree();
+                if (selectedRoleId) {
+                    renderRoleMemberList(selectedRoleId);
+                } else {
+                    const tableHead = document.querySelector('#memberTable thead tr');
+                    tableHead.innerHTML = `
+                        <th width="40"><span class="custom-checkbox"></span></th>
+                        <th>姓名</th>
+                        <th>所属部门 <i class="fa-regular fa-circle-question icon-help"></i></th>
+                        <th>分管部门 <i class="fa-regular fa-circle-question icon-help"></i></th>
+                        <th width="60">操作</th>
+                    `;
+                    memberTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 48px; color: #999;">请选择一个角色</td></tr>';
+                }
+            } else {
+                searchInput.placeholder = '搜索部门';
+                sectionLabel.textContent = '部门';
+                if (quickActions) {
+                    quickActions.style.display = 'block';
+                }
+                if (sectionLabel) {
+                    sectionLabel.style.display = 'block';
+                }
+                renderDepartmentTree();
+                renderMemberList(selectedDepartmentId);
+                const tableHead = document.querySelector('#memberTable thead tr');
+                tableHead.innerHTML = `
+                    <th width="40"><span class="custom-checkbox"></span></th>
+                    <th>姓名</th>
+                    <th>手机 <i class="fa-regular fa-circle-question icon-help"></i></th>
+                    <th>邮箱 <i class="fa-regular fa-circle-question icon-help"></i></th>
+                    <th>角色</th>
+                    <th width="60">操作</th>
+                `;
+            }
+            
+            searchInput.value = '';
+            searchKeyword = '';
+            clearSearchBtn.style.display = 'none';
+            searchResultsOverlay.classList.remove('show');
+            savedSearchResults = [];
+        }
+        
+        // 初始化页面
+        function initPage() {
+            renderDepartmentTree();
+            renderMemberList(selectedDepartmentId);
+            setupEventListeners();
+        }
+        
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 方案切换
+            schemeButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    switchScheme(btn.dataset.scheme);
+                });
+            });
+            
+            // 标签切换
+            tabItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    switchTab(item.dataset.tab);
+                });
+            });
+            
+            // 搜索框（简化版，保留基本功能）
+            searchInput.addEventListener('input', (e) => {
+                searchKeyword = e.target.value.trim();
+                if (searchKeyword !== '') {
+                    clearSearchBtn.style.display = 'block';
+                } else {
+                    clearSearchBtn.style.display = 'none';
+                    searchResultsOverlay.classList.remove('show');
+                }
+            });
+            
+            clearSearchBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                searchInput.value = '';
+                searchKeyword = '';
+                clearSearchBtn.style.display = 'none';
+                searchResultsOverlay.classList.remove('show');
+            });
+        }
+        
+        // 页面加载完成后初始化
+        initPage();
+    </script>
+
+</body>
+</html>
