@@ -81,9 +81,89 @@
         .view.show { display: flex; }
 
         /* =========================================
-           方案 A：堆叠吸顶 (Fixed Structure)
+           方案 A：堆叠吸顶（无折叠功能）
            ========================================= */
         .scroll-container-a { 
+            flex: 1; 
+            overflow-y: auto; 
+            position: relative; 
+            scroll-behavior: smooth; 
+        }
+
+        /* 标题通用样式（方案A） */
+        .header-stick-a {
+            height: var(--header-h);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 16px; 
+            background: #fff; 
+            border-bottom: 1px solid #f7f7f7;
+        }
+        
+        /* 标题 1：吸在 0px */
+        #header-a-sync {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+
+        /* 标题 2：吸在 44px (即标题1的下方) */
+        #header-a-create {
+            position: sticky;
+            top: var(--header-h); /* 44px */
+            z-index: 10;
+            box-shadow: 0 -1px 0 #eee;
+        }
+
+        .list-group-a { padding-bottom: 10px; }
+        .scroll-container-a::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+
+        /* =========================================
+           方案 B：堆叠吸顶（无折叠，点击回顶）
+           ========================================= */
+        .scroll-container-b { 
+            flex: 1; 
+            overflow-y: auto; 
+            position: relative; 
+            scroll-behavior: smooth; 
+        }
+
+        /* 标题通用样式（方案B） */
+        .header-stick-b {
+            height: var(--header-h);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 16px; 
+            background: #fff; 
+            border-bottom: 1px solid #f7f7f7;
+        }
+        
+        /* 标题 1：吸在 0px，可点击 */
+        #header-b-sync {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            cursor: pointer;
+        }
+        #header-b-sync:hover {
+            background: #fafafa;
+        }
+
+        /* 标题 2：吸在 44px (即标题1的下方) */
+        #header-b-create {
+            position: sticky;
+            top: var(--header-h); /* 44px */
+            z-index: 10;
+            box-shadow: 0 -1px 0 #eee;
+        }
+
+        .list-group-b { padding-bottom: 10px; }
+        .scroll-container-b::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+
+        /* =========================================
+           方案 C：堆叠吸顶 (Fixed Structure)
+           ========================================= */
+        .scroll-container-c { 
             flex: 1; 
             overflow-y: auto; 
             position: relative; 
@@ -107,7 +187,7 @@
         */
 
         /* 标题 1：吸在 0px */
-        #header-a-sync {
+        #header-c-sync {
             position: sticky;
             top: 0;
             z-index: 20;
@@ -115,7 +195,7 @@
         }
 
         /* 标题 2：吸在 44px (即标题1的下方) */
-        #header-a-create {
+        #header-c-create {
             position: sticky;
             top: var(--header-h); /* 44px */
             z-index: 10; /* 层级比标题1低一点，或者一样均可，看是否需要覆盖 */
@@ -125,86 +205,6 @@
         .list-group { padding-bottom: 10px; }
         .list-group.hidden { display: none; }
         .collapsed .svg-arrow { transform: rotate(-90deg); }
-
-        /* =========================================
-           方案 B：堆叠吸顶（无折叠功能）
-           ========================================= */
-        .scroll-container-b { 
-            flex: 1; 
-            overflow-y: auto; 
-            position: relative; 
-            scroll-behavior: smooth; 
-        }
-
-        /* 标题通用样式（方案B） */
-        .header-stick-b {
-            height: var(--header-h);
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 0 16px; 
-            background: #fff; 
-            border-bottom: 1px solid #f7f7f7;
-        }
-        
-        /* 标题 1：吸在 0px */
-        #header-b-sync {
-            position: sticky;
-            top: 0;
-            z-index: 20;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-        }
-
-        /* 标题 2：吸在 44px (即标题1的下方) */
-        #header-b-create {
-            position: sticky;
-            top: var(--header-h); /* 44px */
-            z-index: 10;
-            box-shadow: 0 -1px 0 #eee;
-        }
-
-        .list-group-b { padding-bottom: 10px; }
-        .scroll-container-b::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
-
-        /* =========================================
-           方案 C：堆叠吸顶（无折叠，点击回顶）
-           ========================================= */
-        .scroll-container-c { 
-            flex: 1; 
-            overflow-y: auto; 
-            position: relative; 
-            scroll-behavior: smooth; 
-        }
-
-        /* 标题通用样式（方案C） */
-        .header-stick-c {
-            height: var(--header-h);
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 0 16px; 
-            background: #fff; 
-            border-bottom: 1px solid #f7f7f7;
-        }
-        
-        /* 标题 1：吸在 0px，可点击 */
-        #header-c-sync {
-            position: sticky;
-            top: 0;
-            z-index: 20;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-            cursor: pointer;
-        }
-        #header-c-sync:hover {
-            background: #fafafa;
-        }
-
-        /* 标题 2：吸在 44px (即标题1的下方) */
-        #header-c-create {
-            position: sticky;
-            top: var(--header-h); /* 44px */
-            z-index: 10;
-            box-shadow: 0 -1px 0 #eee;
-        }
-
-        .list-group-c { padding-bottom: 10px; }
-        .scroll-container-c::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
 
         /* =========================================
            方案 D：分区滚动 
@@ -243,9 +243,9 @@
 <body>
 
     <div class="switcher">
-        <button class="btn active" onclick="switchView('A')">方案 A：堆叠吸顶</button>
-        <button class="btn" onclick="switchView('B')">方案 B：堆叠吸顶（无折叠）</button>
-        <button class="btn" onclick="switchView('C')">方案 C：堆叠吸顶（点击回顶）</button>
+        <button class="btn active" onclick="switchView('A')">方案 A：堆叠吸顶（无折叠）</button>
+        <button class="btn" onclick="switchView('B')">方案 B：堆叠吸顶（点击回顶）</button>
+        <button class="btn" onclick="switchView('C')">方案 C：堆叠吸顶</button>
         <button class="btn" onclick="switchView('D')">方案 D：分区滚动</button>
     </div>
 
@@ -253,7 +253,7 @@
     <div id="scheme-description" class="scheme-description">
         <div class="scheme-description-title">方案 A 交互特点：</div>
         <div class="scheme-description-text">
-            标题行采用堆叠吸顶效果，滚动时保持可见。支持点击标题折叠/展开对应内容区域。点击「同步的角色」标题可快速回滚到顶部。「创建的角色」标题右侧有「+」按钮。
+            标题行采用堆叠吸顶效果，滚动时保持可见。无折叠功能，所有内容始终可见。简洁的交互方式，适合需要快速浏览的场景。「创建的角色」标题右侧有「+」按钮。
         </div>
     </div>
 
@@ -262,25 +262,23 @@
             <div class="tabs"><div class="tab">部门组织</div><div class="tab active">角色管理</div></div>
         </div>
 
-        <!-- 方案 A：修正后的平铺结构 -->
+        <!-- 方案 A：堆叠吸顶（无折叠功能） -->
         <div id="view-A" class="view show">
             <div class="scroll-container-a" id="scroll-a">
                 
                 <!-- 1. Header Sync (直接子元素) -->
-                <div id="header-a-sync" class="header-stick" onclick="toggleA('sync')">
+                <div id="header-a-sync" class="header-stick-a">
                     <div style="display:flex;align-items:center">
-                        <svg class="svg-arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
                         <span style="font-weight:600;font-size:13px">同步的角色</span>
                     </div>
                 </div>
                 
                 <!-- 2. List Sync (直接子元素) -->
-                <div id="list-a-sync" class="list-group"></div>
+                <div id="list-a-sync" class="list-group-a"></div>
 
                 <!-- 3. Header Create (直接子元素) -->
-                <div id="header-a-create" class="header-stick" onclick="toggleA('create')">
+                <div id="header-a-create" class="header-stick-a">
                     <div style="display:flex;align-items:center">
-                        <svg class="svg-arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
                         <span style="font-weight:600;font-size:13px">创建的角色</span>
                     </div>
                     <span style="font-size:22px;color:#ccc;font-weight:300;line-height:1">+</span>
@@ -288,17 +286,17 @@
 
                 <!-- 4. List Create (直接子元素) -->
                 <!-- 增加底部 padding 保证能滚上来 -->
-                <div id="list-a-create" class="list-group" style="padding-bottom:100px;"></div>
+                <div id="list-a-create" class="list-group-a" style="padding-bottom:100px;"></div>
 
             </div>
         </div>
 
-        <!-- 方案 B：堆叠吸顶（无折叠功能） -->
+        <!-- 方案 B：堆叠吸顶（无折叠，点击回顶） -->
         <div id="view-B" class="view">
             <div class="scroll-container-b" id="scroll-b">
                 
-                <!-- 1. Header Sync (直接子元素) -->
-                <div id="header-b-sync" class="header-stick-b">
+                <!-- 1. Header Sync (直接子元素) - 可点击回顶 -->
+                <div id="header-b-sync" class="header-stick-b" onclick="scrollToTopB()">
                     <div style="display:flex;align-items:center">
                         <span style="font-weight:600;font-size:13px">同步的角色</span>
                     </div>
@@ -322,23 +320,25 @@
             </div>
         </div>
 
-        <!-- 方案 C：堆叠吸顶（无折叠，点击回顶） -->
+        <!-- 方案 C：修正后的平铺结构 -->
         <div id="view-C" class="view">
             <div class="scroll-container-c" id="scroll-c">
                 
-                <!-- 1. Header Sync (直接子元素) - 可点击回顶 -->
-                <div id="header-c-sync" class="header-stick-c" onclick="scrollToTopC()">
+                <!-- 1. Header Sync (直接子元素) -->
+                <div id="header-c-sync" class="header-stick" onclick="toggleC('sync')">
                     <div style="display:flex;align-items:center">
+                        <svg class="svg-arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
                         <span style="font-weight:600;font-size:13px">同步的角色</span>
                     </div>
                 </div>
                 
                 <!-- 2. List Sync (直接子元素) -->
-                <div id="list-c-sync" class="list-group-c"></div>
+                <div id="list-c-sync" class="list-group"></div>
 
                 <!-- 3. Header Create (直接子元素) -->
-                <div id="header-c-create" class="header-stick-c">
+                <div id="header-c-create" class="header-stick" onclick="toggleC('create')">
                     <div style="display:flex;align-items:center">
+                        <svg class="svg-arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
                         <span style="font-weight:600;font-size:13px">创建的角色</span>
                     </div>
                     <span style="font-size:22px;color:#ccc;font-weight:300;line-height:1">+</span>
@@ -346,7 +346,7 @@
 
                 <!-- 4. List Create (直接子元素) -->
                 <!-- 增加底部 padding 保证能滚上来 -->
-                <div id="list-c-create" class="list-group-c" style="padding-bottom:100px;"></div>
+                <div id="list-c-create" class="list-group" style="padding-bottom:100px;"></div>
 
             </div>
         </div>
@@ -407,15 +407,15 @@
         const schemeDescriptions = {
             'A': {
                 title: '方案 A 交互特点：',
-                text: '标题行采用堆叠吸顶效果，滚动时保持可见。支持点击标题折叠/展开对应内容区域。点击「同步的角色」标题可快速回滚到顶部。「创建的角色」标题右侧有「+」按钮。'
+                text: '标题行采用堆叠吸顶效果，滚动时保持可见。无折叠功能，所有内容始终可见。简洁的交互方式，适合需要快速浏览的场景。「创建的角色」标题右侧有「+」按钮。'
             },
             'B': {
                 title: '方案 B 交互特点：',
-                text: '标题行采用堆叠吸顶效果，滚动时保持可见。无折叠功能，所有内容始终可见。简洁的交互方式，适合需要快速浏览的场景。「创建的角色」标题右侧有「+」按钮。'
+                text: '标题行采用堆叠吸顶效果，滚动时保持可见。无折叠功能，所有内容始终可见。点击「同步的角色」标题可快速回滚到顶部。「创建的角色」标题右侧有「+」按钮。'
             },
             'C': {
                 title: '方案 C 交互特点：',
-                text: '标题行采用堆叠吸顶效果，滚动时保持可见。无折叠功能，所有内容始终可见。点击「同步的角色」标题可快速回滚到顶部。「创建的角色」标题右侧有「+」按钮。'
+                text: '标题行采用堆叠吸顶效果，滚动时保持可见。支持点击标题折叠/展开对应内容区域。点击「同步的角色」标题可快速回滚到顶部。「创建的角色」标题右侧有「+」按钮。'
             },
             'D': {
                 title: '方案 D 交互特点：',
@@ -441,11 +441,17 @@
             }
         }
 
-        // 方案 A：修正的折叠与滚动逻辑
-        function toggleA(key) {
-            const h = document.getElementById(`header-a-${key}`);
-            const l = document.getElementById(`list-a-${key}`);
-            const s = document.getElementById('scroll-a');
+        // 方案 B：点击「同步的角色」标题回滚到顶部
+        function scrollToTopB() {
+            const scrollContainer = document.getElementById('scroll-b');
+            scrollContainer.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        // 方案 C：修正的折叠与滚动逻辑
+        function toggleC(key) {
+            const h = document.getElementById(`header-c-${key}`);
+            const l = document.getElementById(`list-c-${key}`);
+            const s = document.getElementById('scroll-c');
 
             // 1. 如果是点击"同步"，且已经滚下去了，则回滚到顶
             if (key === 'sync' && s.scrollTop > 50) {
@@ -466,7 +472,7 @@
             }
         }
 
-        // 方案 B
+        // 方案 D
         function hoverPart(idx) {
             const p1 = document.getElementById('part-1');
             const p2 = document.getElementById('part-2');
@@ -482,12 +488,6 @@
                 a2.style.transform = 'rotate(0deg)';
                 a1.style.transform = 'rotate(-90deg)';
             }
-        }
-
-        // 方案 C：点击「同步的角色」标题回滚到顶部
-        function scrollToTopC() {
-            const scrollContainer = document.getElementById('scroll-c');
-            scrollContainer.scrollTo({top: 0, behavior: 'smooth'});
         }
 
     </script>
