@@ -1607,6 +1607,11 @@
             headerSync.id = `header-${currentScheme.toLowerCase()}-sync`;
             headerSync.className = `role-header-${currentScheme.toLowerCase()}`;
             
+            // 方案D：根据展开状态设置collapsed类
+            if (currentScheme === 'D' && !roleData.synced.expanded) {
+                headerSync.classList.add('collapsed');
+            }
+            
             if (currentScheme === 'C' || currentScheme === 'D') {
                 headerSync.style.cursor = 'pointer';
                 if (currentScheme === 'C') {
@@ -1650,6 +1655,11 @@
             const headerCreate = document.createElement('div');
             headerCreate.id = `header-${currentScheme.toLowerCase()}-create`;
             headerCreate.className = `role-header-${currentScheme.toLowerCase()}`;
+            
+            // 方案D：根据展开状态设置collapsed类
+            if (currentScheme === 'D' && !roleData.created.expanded) {
+                headerCreate.classList.add('collapsed');
+            }
             
             if (currentScheme === 'D') {
                 headerCreate.style.cursor = 'pointer';
