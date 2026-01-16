@@ -12,57 +12,48 @@
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: #2b2d31; 
-            display: flex; flex-direction: column; align-items: center; 
-            min-height: 100vh; padding-top: 20px;
+            background: #fff; 
+            margin: 0; padding: 0;
+            height: 100vh;
+            display: flex; flex-direction: column;
         }
 
         /* 顶部切换 */
         .switcher {
-            background: #fff; padding: 4px; border-radius: 50px; display: flex;
-            margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            background: #f5f5f5; padding: 8px 16px; 
+            display: flex; justify-content: center;
         }
-        .btn {
-            border: none; background: transparent; padding: 8px 24px;
-            border-radius: 24px; cursor: pointer; color: #666; font-weight: 600; font-size: 14px;
-            transition: 0.2s;
-        }
-        .btn.active { background: var(--primary); color: #fff; }
-
-        /* 方案说明区域 */
-        .scheme-description {
-            width: 360px;
-            margin-bottom: 16px;
-            padding: 12px 16px;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            transition: opacity 0.3s ease;
-        }
-        .scheme-description.hidden {
-            display: none;
-        }
-        .scheme-description-title {
-            font-size: 13px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 6px;
-        }
-        .scheme-description-text {
-            font-size: 12px;
-            color: #666;
-            line-height: 1.6;
+        .scheme-select {
+            border: 1px solid #ddd; background: #fff; padding: 6px 12px;
+            font-size: 14px; color: #333; font-weight: 500;
+            outline: none; width: 300px; cursor: pointer; border-radius: 4px;
         }
 
-        /* 手机外壳 */
+        /* 容器 */
         .device {
-            width: 360px; height: 720px; background: #fff; border-radius: 16px;
-            box-shadow: 0 0 0 10px #1a1a1a, 0 20px 50px rgba(0,0,0,0.5);
+            width: 350px; 
+            height: 100%; 
+            background: #fff;
+            margin: 0 auto; /* 居中 */
             display: flex; flex-direction: column; overflow: hidden; position: relative;
+            border-left: 1px solid #f0f0f0;
+            border-right: 1px solid #f0f0f0;
         }
+
+        /* 文件夹折叠样式 */
+        .folder { cursor: pointer; }
+        .folder .arrow-icon { 
+            width: 16px; height: 16px; 
+            margin-right: 4px; 
+            fill: #999; 
+            transition: transform 0.2s; 
+        }
+        .folder.collapsed .arrow-icon { transform: rotate(-90deg); }
+        .folder-content { display: block; }
+        .folder-content.hidden { display: none; }
 
         /* Tabs */
-        .tabs-area { padding: 12px 16px 8px; border-bottom: 1px solid #f0f0f0; background: #fff; z-index: 50; flex-shrink: 0;}
+        .tabs-area { padding: 12px 16px 8px; background: #fff; z-index: 50; flex-shrink: 0;}
         .tabs { display: flex; background: #f2f3f5; border-radius: 8px; padding: 3px; }
         .tab { flex: 1; text-align: center; padding: 6px; font-size: 13px; color: #666; border-radius: 6px; }
         .tab.active { background: #fff; color: var(--primary); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
@@ -96,7 +87,6 @@
             display: flex; align-items: center; justify-content: space-between;
             padding: 0 16px; 
             background: #fff; 
-            border-bottom: 1px solid #f7f7f7;
         }
         
         /* 标题 1：不吸顶，会被滚走 */
@@ -131,7 +121,6 @@
             display: flex; align-items: center; justify-content: space-between;
             padding: 0 16px; 
             background: #fff; 
-            border-bottom: 1px solid #f7f7f7;
         }
         
         /* 标题 1：吸在 0px */
@@ -147,7 +136,6 @@
             position: sticky;
             top: var(--header-h); /* 44px */
             z-index: 10;
-            box-shadow: 0 -1px 0 #eee;
         }
 
         .list-group-b { padding-bottom: 10px; }
@@ -169,7 +157,6 @@
             display: flex; align-items: center; justify-content: space-between;
             padding: 0 16px; 
             background: #fff; 
-            border-bottom: 1px solid #f7f7f7;
         }
         
         /* 标题 1：吸在 0px，可点击 */
@@ -189,7 +176,6 @@
             position: sticky;
             top: var(--header-h); /* 44px */
             z-index: 10;
-            box-shadow: 0 -1px 0 #eee;
         }
 
         .list-group-c { padding-bottom: 10px; }
@@ -211,7 +197,6 @@
             display: flex; align-items: center; justify-content: space-between;
             padding: 0 16px; 
             background: #fff; 
-            border-bottom: 1px solid #f7f7f7;
             cursor: pointer;
         }
         
@@ -234,7 +219,6 @@
             position: sticky;
             top: var(--header-h); /* 44px */
             z-index: 10; /* 层级比标题1低一点，或者一样均可，看是否需要覆盖 */
-            box-shadow: 0 -1px 0 #eee; /* 上边框线 */
         }
 
         .list-group { padding-bottom: 10px; }
@@ -259,7 +243,6 @@
             height: var(--header-h); flex-shrink: 0; 
             display: flex; align-items: center; padding: 0 16px;
             cursor: default; background: #fff; z-index: 5;
-            border-top: 1px solid #f0f0f0;
         }
         .part-content { 
             flex: 1; overflow-y: auto; padding-bottom: 12px;
@@ -278,19 +261,13 @@
 <body>
 
     <div class="switcher">
-        <button class="btn active" onclick="switchView('A')">方案 A：仅「创建的角色」吸顶</button>
-        <button class="btn" onclick="switchView('B')">方案 B：堆叠吸顶（无折叠）</button>
-        <button class="btn" onclick="switchView('C')">方案 C：堆叠吸顶（点击回顶）</button>
-        <button class="btn" onclick="switchView('D')">方案 D：堆叠吸顶</button>
-        <button class="btn" onclick="switchView('E')">方案 E：分区滚动</button>
-    </div>
-
-    <!-- 方案说明区域 -->
-    <div id="scheme-description" class="scheme-description">
-        <div class="scheme-description-title">方案 A 交互特点：</div>
-        <div class="scheme-description-text">
-            「同步的角色」标题不会冻结，会随内容滚动被滚走。「创建的角色」标题采用吸顶效果，滚动时保持在顶部可见。「创建的角色」标题右侧有「+」按钮。
-        </div>
+        <select id="schemeSelect" class="scheme-select" onchange="switchView(this.value)">
+            <option value="B" selected>方案 B：堆叠吸顶（无折叠）</option>
+            <option value="A">方案 A：仅「创建的角色」吸顶</option>
+            <option value="C">方案 C：堆叠吸顶（点击回顶）</option>
+            <option value="D">方案 D：堆叠吸顶</option>
+            <option value="E">方案 E：分区滚动</option>
+        </select>
     </div>
 
     <div class="device">
@@ -299,7 +276,7 @@
         </div>
 
         <!-- 方案 A：仅「创建的角色」吸顶 -->
-        <div id="view-A" class="view show">
+        <div id="view-A" class="view">
             <div class="scroll-container-a" id="scroll-a">
                 
                 <!-- 1. Header Sync (直接子元素) - 不吸顶，会被滚走 -->
@@ -328,7 +305,7 @@
         </div>
 
         <!-- 方案 B：堆叠吸顶（无折叠功能） -->
-        <div id="view-B" class="view">
+        <div id="view-B" class="view show">
             <div class="scroll-container-b" id="scroll-b">
                 
                 <!-- 1. Header Sync (直接子元素) -->
@@ -446,72 +423,58 @@
             `<div class="icon-box"><svg class="svg-f" viewBox="0 0 24 24"><path d="M10 4H4c-1 0-2 .9-2 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg></div>` :
             `<div class="icon-box"><svg class="svg-u" viewBox="0 0 24 24"><path d="M12 12c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4zm0 2c-2.7 0-8 1.3-8 4v2h16v-2c0-2.7-5.3-4-8-4z"/><circle cx="18" cy="18" r="4" fill="#3e8bf5" stroke="#fff" stroke-width="1"/><path d="M16.5 18l1 1 2.5-2.5" fill="none" stroke="#fff" stroke-width="1.2"/></svg></div>`;
 
-        function genList(arr) {
+        function genList(arr, listIdPrefix) {
             let html='';
-            arr.forEach(x => {
-                html += `<div class="item">${icon('f')}<span style="flex:1;font-weight:500">${x.t}</span></div>`;
-                for(let i=0;i<x.n;i++) html+=`<div class="item item-sub">${icon('u')}<span>${x.t} - 岗位 ${i+1}</span></div>`;
+            arr.forEach((x, index) => {
+                const groupId = `${listIdPrefix}-g-${index}`;
+                html += `
+                <div class="item folder" onclick="toggleFolder('${groupId}', this)">
+                    <svg class="arrow-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+                    ${icon('f')}
+                    <span style="flex:1;font-weight:500">${x.t}</span>
+                </div>
+                <div id="${groupId}" class="folder-content">`;
+                
+                for(let i=0;i<x.n;i++) {
+                    html+=`<div class="item item-sub">${icon('u')}<span>${x.t} - 岗位 ${i+1}</span></div>`;
+                }
+                html += `</div>`;
             });
             return html;
+        }
+
+        function toggleFolder(groupId, headerEl) {
+            const content = document.getElementById(groupId);
+            content.classList.toggle('hidden');
+            headerEl.classList.toggle('collapsed');
         }
 
         // 增加数据量以确保滚动效果明显
         const d1 = [{t:'研发中心',n:5},{t:'市场部',n:8},{t:'供应链',n:6},{t:'人力资源',n:4},{t:'财务部',n:10},{t:'行政部',n:5}];
         const d2 = [{t:'Alpha项目',n:10},{t:'双十一特攻',n:12},{t:'2025校招',n:8},{t:'审计权限',n:4},{t:'离职归档',n:20}];
 
-        document.getElementById('list-a-sync').innerHTML = genList(d1);
-        document.getElementById('list-a-create').innerHTML = genList(d2);
-        document.getElementById('list-b-sync').innerHTML = genList(d1);
-        document.getElementById('list-b-create').innerHTML = genList(d2);
-        document.getElementById('list-c-sync').innerHTML = genList(d1);
-        document.getElementById('list-c-create').innerHTML = genList(d2);
-        document.getElementById('list-d-sync').innerHTML = genList(d1);
-        document.getElementById('list-d-create').innerHTML = genList(d2);
-        document.getElementById('list-e-1').innerHTML = genList(d1);
-        document.getElementById('list-e-2').innerHTML = genList(d2);
-
-        // 方案说明文字
-        const schemeDescriptions = {
-            'A': {
-                title: '方案 A 交互特点：',
-                text: '「同步的角色」标题不会冻结，会随内容滚动被滚走。「创建的角色」标题采用吸顶效果，滚动时保持在顶部可见。「创建的角色」标题右侧有「+」按钮。'
-            },
-            'B': {
-                title: '方案 B 交互特点：',
-                text: '标题行采用堆叠吸顶效果，滚动时保持可见。无折叠功能，所有内容始终可见。简洁的交互方式，适合需要快速浏览的场景。「创建的角色」标题右侧有「+」按钮。'
-            },
-            'C': {
-                title: '方案 C 交互特点：',
-                text: '标题行采用堆叠吸顶效果，滚动时保持可见。无折叠功能，所有内容始终可见。点击「同步的角色」标题可快速回滚到顶部。「创建的角色」标题右侧有「+」按钮。'
-            },
-            'D': {
-                title: '方案 D 交互特点：',
-                text: '标题行采用堆叠吸顶效果，滚动时保持可见。支持点击标题折叠/展开对应内容区域。点击「同步的角色」标题可快速回滚到顶部。「创建的角色」标题右侧有「+」按钮。'
-            },
-            'E': {
-                title: '方案 E 交互特点：',
-                text: '采用分区滚动布局，两个分区独立管理。鼠标悬停（hover）在分区标题上自动展开该分区。展开的分区会占用更多空间，收起的分区仅显示标题。分区切换有平滑的动画过渡效果。'
-            }
-        };
+        document.getElementById('list-a-sync').innerHTML = genList(d1, 'a-s');
+        document.getElementById('list-a-create').innerHTML = genList(d2, 'a-c');
+        document.getElementById('list-b-sync').innerHTML = genList(d1, 'b-s');
+        document.getElementById('list-b-create').innerHTML = genList(d2, 'b-c');
+        document.getElementById('list-c-sync').innerHTML = genList(d1, 'c-s');
+        document.getElementById('list-c-create').innerHTML = genList(d2, 'c-c');
+        document.getElementById('list-d-sync').innerHTML = genList(d1, 'd-s');
+        document.getElementById('list-d-create').innerHTML = genList(d2, 'd-c');
+        document.getElementById('list-e-1').innerHTML = genList(d1, 'e-1');
+        document.getElementById('list-e-2').innerHTML = genList(d2, 'e-2');
 
         // 交互逻辑
         function switchView(v) {
-            document.querySelectorAll('.btn').forEach(b=>b.classList.remove('active'));
-            event.target.classList.add('active');
             document.getElementById('view-A').classList.toggle('show', v==='A');
             document.getElementById('view-B').classList.toggle('show', v==='B');
             document.getElementById('view-C').classList.toggle('show', v==='C');
             document.getElementById('view-D').classList.toggle('show', v==='D');
             document.getElementById('view-E').classList.toggle('show', v==='E');
-            
-            // 更新说明文字
-            const desc = document.getElementById('scheme-description');
-            const descData = schemeDescriptions[v];
-            if (desc && descData) {
-                desc.querySelector('.scheme-description-title').textContent = descData.title;
-                desc.querySelector('.scheme-description-text').textContent = descData.text;
-            }
         }
+
+        // 初始化显示方案B
+        switchView('B');
 
         // 方案 C：点击「同步的角色」标题回滚到顶部
         function scrollToTopC() {
